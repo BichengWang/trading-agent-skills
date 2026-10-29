@@ -1,0 +1,187 @@
+"""A decision is recorded as the call that was made, or as needing review.
+
+Two readers used to disagree about the same text: the signal said REVIEW while
+the memory log wrote a fabricated Hold. Worse, prose that argued against a Buy
+before concluding Underweight was read as Buy, because the parser took the first
+rating word anywhere in the document. A wrong direction is worse than no
+direction, so an unclear decision is REVIEW everywhere.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from ta_skills.rating import RATING_REVIEW, extract_rating, parse_rating
+
+INVERTED = ("The aggressive analyst pushed hard for a Buy on the AI backlog, but the "
+            "conservative case on margin compression carried the debate. "
+            "Final rating — Underweight. Trim to half weight over the next two weeks.")
+REFUSAL = "I'm sorry, I can't provide a rating for this security."
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("separator", [":", "-", "—", "–", "：", ": **"])
+def test_the_labelled_rating_wins_whatever_separates_it(separator):
+    text = f"Buy arguments were raised and rejected.\n\nRating{separator}Underweight\n\nTrim."
+    assert extract_rating(text) == "Underweight"
+
+
+@pytest.mark.unit
+def test_a_rating_argued_against_is_not_read_as_the_decision():
+    assert extract_rating(INVERTED) == "Underweight"
+
+
+@pytest.mark.unit
+def test_prose_naming_several_ratings_without_a_label_needs_review():
+    """Nothing in the text says which one is the call, so guessing risks
+    reporting the opposite of the decision."""
+    text = "The bull wants Buy, the bear wants Sell, and the committee was split."
+    assert extract_rating(text) is None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("prose", [
+    "We would not Sell here; the dip is a chance to add.",
+    "**评级**：买入\n\n不建议卖出 (Sell)。",   # a label in another language, and a negated Sell
+    "On balance we stay Underweight until margins recover.",
+])
+def test_a_rating_word_without_a_label_is_not_read_as_the_call(prose):
+    """A rating word in prose may be one the text argues against (#1435)."""
+    assert extract_rating(prose) is None
+    assert parse_rating(prose) == RATING_REVIEW
+
+
+@pytest.mark.unit
+def test_a_refusal_has_no_rating_and_is_not_defaulted():
+    assert extract_rating(REFUSAL) is None
+    assert parse_rating(REFUSAL) == RATING_REVIEW
+
+
+@pytest.mark.unit
+def test_the_scale_quoted_in_a_prompt_does_not_become_the_rating():
+    """A free-text answer that echoes the rating scale was read as the first
+    tier listed in it."""
+    text = ("**Rating Scale**: Buy, Overweight, Hold, Underweight, Sell.\n\n"
+            "**Rating**: Sell\n\nExit the position.")
+    assert extract_rating(text) == "Sell"
+
+
+# --- the readers agree ------------------------------------------------------
+
+@pytest.mark.unit
+def test_the_memory_log_records_review_rather_than_a_tradeable_hold(tmp_path):
+    from ta_skills.memory import TradingMemoryLog
+
+    log = TradingMemoryLog({"memory_log_path": str(tmp_path / "m.md")})
+    log.store_decision("NVDA", "2026-01-05", REFUSAL)
+
+    entry = log.load_entries()[0]
+    assert entry["rating"] == RATING_REVIEW
+
+
+@pytest.mark.unit
+def test_the_signal_and_the_log_agree_on_the_same_decision(tmp_path):
+    from ta_skills.memory import TradingMemoryLog
+    from ta_skills.rating import parse_rating
+
+    log = TradingMemoryLog({"memory_log_path": str(tmp_path / "m.md")})
+    for text in (INVERTED, REFUSAL, "**Rating**: Buy\n\nAccumulate."):
+        log.store_decision("NVDA", f"2026-01-0{len(log.load_entries()) + 1}", text)
+
+    signals = [parse_rating(text)
+               for text in (INVERTED, REFUSAL, "**Rating**: Buy\n\nAccumulate.")]
+    assert [e["rating"] for e in log.load_entries()] == signals
+
+
+
+
+
+
+
+
+@pytest.mark.unit
+def test_a_state_without_the_typed_rating_reads_it_from_the_decision():
+    """A run finished by an older version and resumed from its checkpoint has
+    no final_rating; every reader falls back the same way instead of one
+    raising and another reporting REVIEW."""
+    from ta_skills.rating import run_rating
+
+    assert run_rating({"final_rating": "Hold", "final_trade_decision": "**Rating**: Buy"}) == "Hold"
+    assert run_rating({"final_trade_decision": "**Rating**: Sell\n\nExit."}) == "Sell"
+    assert run_rating({}) == RATING_REVIEW
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("quoted", [
+    "Street consensus rating: Buy (28 of 35 analysts).",
+    "Moody's affirmed the credit rating: Buy-side demand for the bonds stayed firm.",
+    "Operating margin: Sell-side estimates sit below guidance.",
+])
+def test_a_rating_the_text_quotes_does_not_replace_the_decision(quoted):
+    """A free-text decision opens with its own rating line; a rating it quotes
+    as evidence, or a word merely ending in 'rating', is not the call."""
+    text = f"**Rating**: Hold\n\n**Investment Thesis**: {quoted} We wait for margins."
+    assert extract_rating(text) == "Hold"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("quoted", [
+    "- Rating: Buy (Goldman Sachs, 12m target 180)",
+    "| Rating: Buy | Morgan Stanley |",
+    "> Rating: Buy, per the sell-side note",
+    "Street consensus rating: Buy",
+    "Consensus rating: Buy (28 of 35 analysts)",
+])
+def test_a_quoted_rating_in_a_list_table_or_quote_is_not_the_decision(quoted):
+    text = f"Our rating: Hold\n\nWhat others say:\n{quoted}\n\nWe wait for margins."
+    assert extract_rating(text) == "Hold"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("text, expected", [
+    ("Consensus rating: Buy\nRating: Sell", "Sell"),
+    ("Analyst rating: Overweight\n**Rating**: Underweight", "Underweight"),
+    ("Previous rating: Buy\n## Final Rating - Hold", "Hold"),
+    ("Street rating: Sell\nOur rating: Buy", "Buy"),
+    ("Credit rating: Sell\nRating: Buy", "Buy"),
+    ("Sell-side consensus rating: Buy\n**Rating**: Hold", "Hold"),
+    # the decision opens with its rating, as the prompt asks
+    ("- **Rating**: Sell\n\nConsensus rating: Buy", "Sell"),
+    ("- **Rating**: Sell\n- **Investment Thesis**: consensus rating: Buy, we disagree.", "Sell"),
+    ("1. **Rating**: Underweight\n2. **Executive Summary**: Street rating: Buy.", "Underweight"),
+    ("\u2022 **Rating**: Sell\nConsensus rating: Buy", "Sell"),
+    ("## Decision\n\n- **Rating**: Hold\n- Rating: Buy (Goldman Sachs)", "Hold"),
+    ("Recommended rating: Buy\n\nConsensus rating: Sell", "Buy"),
+    ("Updated rating: Sell\nPrevious rating: Buy", "Sell"),
+    ("Our final rating: Sell\nConsensus rating: Buy", "Sell"),
+    ("**Overall Final Rating**: Sell\nConsensus rating: Buy", "Sell"),
+    # ratings quoted as list items before the decision's own line
+    ("Broker views:\n- Rating: Buy (Morgan Stanley)\n- Rating: Hold (Goldman)\n\n**Rating**: Sell", "Sell"),
+    ("Previous decision recap:\n- **Rating**: Buy (2026-09-01)\n\n**Rating**: Sell", "Sell"),
+    ("Lessons:\n- Rating: Buy was wrong last time\n\n**Rating**: Hold", "Hold"),
+])
+def test_a_rating_someone_else_gave_does_not_become_the_decision(text, expected):
+    """The decision's own rating line is read as the call; another party's
+    rating, even on a line of its own, is evidence, not the call (#1466)."""
+    assert extract_rating(text) == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("text", [
+    "Trader's proposed rating: Buy\n\nPortfolio Manager's rating: Hold",
+    "Research Manager rating: Buy\nPortfolio rating: Underweight",
+    "Trader's rating: Buy\nRisk team rating: Sell\nPortfolio Manager's Final Rating: Hold",
+    "Risk views:\n- Aggressive analyst rating: Buy\n- Conservative rating: Sell\n\nPM: Rating: Hold",
+    "PM Rating: Sell\n- Rating: Buy (JPMorgan)",
+    "Position rating: Underweight\n* Rating: Overweight per Citi",
+    "Street views:\n- Goldman rating: Buy\n\nWeighing all of this, the Portfolio Manager's rating: Underweight.",
+    "Analyst views:\n- Rating: Buy (Goldman)\n\nAfter the debate our final call is Sell (Rating: Sell).",
+    "Lessons:\n- Rating: Buy was wrong last time\n\n- **Rating**: Hold",
+    "Broker views:\n- Rating: Buy (MS)\n\n- **Rating**: Sell",
+    "Investment rating: Underweight\nStreet rating: Buy",
+    "## Street view\n1. Rating: Buy, target $250 (JPM)\n\n## Our call\n**Rating**: Underweight",
+])
+def test_ratings_that_disagree_with_no_line_of_the_decisions_own_need_review(text):
+    """When the text never states its own rating in the decision's shape and the
+    ratings it names disagree, nobody can tell which is the call (#1170)."""
+    assert extract_rating(text) is None

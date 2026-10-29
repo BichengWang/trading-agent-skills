@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trading-agent-skills"
+dynamic = ["version"]
+description = "TradingAgents research pipeline as a skill-driven multi-agent system: deterministic data, state and report CLI for role skills."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = [
+    "markdown-it-py>=4.0",
+    "pandas>=3.0.6",
+    "pydantic>=2.7",
+    "python-dateutil>=2.9",
+    "python-dotenv>=1.0.0",
+    "pytz>=2025.2",
+    "requests>=2.32.4",
+    "stockstats==0.6.5",
+    "yfinance>=1.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.16",
+    "pytest>=8.0",
+    "pytest-subtests>=0.13",
+]
+
+[project.scripts]
+ta = "ta_skills.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "ta_skills.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ta_skills = ["assets/*.svg"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -m \"not integration\""
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: tests requiring network services; run only with -m integration",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
