@@ -35,7 +35,9 @@ The orchestrator only loops `ta run next`: analysts and memory in parallel, then
 
 ### Report
 
-`ta run finish` writes the TradingAgents report tree: `<reports_dir>/<TICKER>/<YYYYMMDD>_<model_label>_<YYYYMMDD>_<HHMMSS>/` with stage folders `1_analysts` to `5_portfolio`, `complete_report.md` and `complete_report.html`, compatible with the TradingAgents report site. It also writes the state log under `results_dir` and records the decision in the memory log.
+`ta run finish` writes the TradingAgents report tree: `<reports_dir>/<TICKER>/<YYYYMMDD>_<model_label>_<YYYYMMDD>_<HHMMSS>/` with stage folders `1_analysts` to `5_portfolio`, `complete_report.md` and `complete_report.html`. It also writes the state log under `results_dir` and records the decision in the memory log.
+
+The `trading-research` skill writes reports into this repo's `docs/` (override with `TRADINGAGENTS_REPORTS_DIR`) and then runs `scripts/report_workflow.py`, which regenerates the MkDocs site exactly as TradingAgents does: `docs/index.md` with daily decision summaries, one hub per ticker at `docs/<TICKER>/index.md`, and a strict build into `_site/`. Preview with `uv run mkdocs serve`. Report Markdown and the derived pages are gitignored, as in TradingAgents.
 
 ## Install
 
@@ -43,7 +45,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone <this repo> && cd trading-agent-skills
-uv sync --extra dev        # or: uv pip install -e '.[dev]'
+uv sync --extra dev --extra docs   # or: uv pip install -e '.[dev,docs]'
 uv run ta --help
 ```
 

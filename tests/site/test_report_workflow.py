@@ -1,0 +1,415 @@
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+import pytest
+
+
+def load_workflow():
+    path = Path(__file__).resolve().parents[2] / "scripts" / "report_workflow.py"
+    spec = importlib.util.spec_from_file_location("report_workflow", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def make_run(
+    docs_dir: Path,
+    ticker: str,
+    folder: str,
+    *,
+    complete: bool = True,
+    stage_files: dict[str, str] | None = None,
+) -> Path:
+    run_dir = docs_dir / ticker / folder
+    run_dir.mkdir(parents=True)
+    if complete:
+        (run_dir / "complete_report.md").write_text(
+            f"# Trading Analysis Report: {ticker}\n",
+            encoding="utf-8",
+        )
+        (run_dir / "5_portfolio").mkdir()
+        (run_dir / "5_portfolio/decision.md").write_text("Price Target: 120", encoding="utf-8")
+    for rel_path, body in (stage_files or {}).items():
+        path = run_dir / rel_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+    return run_dir
+
+
+@pytest.mark.unit
+def test_latest_date_detection_chooses_max_folder_prefix(tmp_path):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    make_run(docs, "AAPL", "20260601_opus_20260601_010101")
+    make_run(docs, "AAPL", "20260602_opus_20260602_010101")
+    make_run(docs, "MSFT", "20260601_opus_20260601_010101")
+
+    runs = workflow.discover_runs(docs)
+
+    assert workflow.latest_analysis_date(runs) == "2026-06-02"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("value", ["20260602", "2026-06-02"])
+def test_explicit_analysis_date_accepts_compact_and_iso(value):
+    workflow = load_workflow()
+
+    assert workflow.normalize_analysis_date(value) == "2026-06-02"
+    assert workflow.analysis_date_key(workflow.normalize_analysis_date(value)) == "20260602"
+
+
+@pytest.mark.unit
+def test_incomplete_target_date_coverage_fails_with_missing_tickers(tmp_path):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    make_run(docs, "AAPL", "20260602_opus_20260602_010101")
+    make_run(docs, "MSFT", "20260601_opus_20260601_010101")
+    runs = workflow.discover_runs(docs)
+    selected = workflow.select_target_runs(runs, "2026-06-02")
+
+    with pytest.raises(workflow.WorkflowError, match="MSFT"):
+        workflow.require_full_coverage(runs, selected, "2026-06-02")
+
+
+@pytest.mark.unit
+def test_run_workflow_can_allow_incomplete_target_date(monkeypatch):
+    workflow = load_workflow()
+    current = workflow.site.Run(
+        "AAPL",
+        "2026-06-02",
+        "opus",
+        "2026-06-02 10:10:10",
+        "20260602_opus_20260602_101010",
+    )
+    previous = workflow.site.Run(
+        "MSFT",
+        "2026-06-01",
+        "opus",
+        "2026-06-01 10:10:10",
+        "20260601_opus_20260601_101010",
+    )
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        workflow,
+        "discover_runs",
+        lambda docs_dir: {"AAPL": [current], "MSFT": [previous]},
+    )
+    monkeypatch.setattr(
+        workflow,
+        "process_selected_runs",
+        lambda selected: calls.append(
+            ",".join(f"{ticker}/{model}" for ticker, model in sorted(selected))
+        ),
+    )
+    monkeypatch.setattr(workflow, "build_reports_site", lambda date: calls.append(date))
+    # build_static_site invokes the real `mkdocs build --strict`, which needs
+    # the derived per-ticker docs/<TICKER>/index.md hubs that only exist after
+    # a real report run — never in a fresh checkout (CI). Not this test's
+    # concern (it verifies the incomplete-target-date allowance), so stub it
+    # like the other workflow steps.
+    monkeypatch.setattr(workflow, "build_static_site", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        workflow,
+        "validate_homepage",
+        lambda date, selected, **kwargs: calls.append(
+            "validated:"
+            + ",".join(f"{ticker}/{model}" for ticker, model in sorted(selected))
+        ),
+    )
+
+    workflow.run_workflow(analysis_date="20260602", require_coverage=False)
+
+    assert calls == ["AAPL/opus", "2026-06-02", "validated:AAPL/opus"]
+
+
+@pytest.mark.unit
+def test_missing_complete_report_is_reassembled_from_stage_files(tmp_path, monkeypatch):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(
+        docs,
+        "AAPL",
+        "20260602_opus_20260602_101010",
+        complete=False,
+        stage_files={"1_analysts/market.md": "# Market body\n"},
+    )
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+
+    workflow.ensure_complete_report(run)
+
+    report = run_dir / "complete_report.md"
+    text = report.read_text(encoding="utf-8")
+    assert "# Trading Analysis Report: AAPL" in text
+    assert "### Market Analyst" in text
+    assert "#### Market body" in text
+
+
+@pytest.mark.unit
+def test_missing_complete_report_without_stage_files_fails_with_paths(tmp_path, monkeypatch):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(
+        docs,
+        "AAPL",
+        "20260602_opus_20260602_101010",
+        complete=False,
+    )
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+
+    with pytest.raises(workflow.WorkflowError, match="1_analysts/market.md"):
+        workflow.ensure_complete_report(run)
+
+
+@pytest.mark.unit
+def test_strip_run_trailing_whitespace_cleans_report_and_stage_files(tmp_path, monkeypatch):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(
+        docs,
+        "AAPL",
+        "20260602_opus_20260602_101010",
+        stage_files={"1_analysts/market.md": "stage line  \nkeep\n"},
+    )
+    (run_dir / "complete_report.md").write_text("report line\t\n", encoding="utf-8")
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+
+    assert workflow.strip_run_trailing_whitespace(run) == 2
+    assert (run_dir / "complete_report.md").read_text(encoding="utf-8") == "report line\n"
+    assert (run_dir / "1_analysts" / "market.md").read_text(encoding="utf-8") == "stage line\nkeep\n"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("suggestion", ["Buy / Overweight", "Sell / Reduce / Underweight"])
+def test_homepage_validation_accepts_selected_date_links(tmp_path, monkeypatch, suggestion):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(docs, "AAPL", "20260602_opus_20260602_101010")
+    gpt_run_dir = make_run(docs, "AAPL", "20260602_gpt-5.5_20260602_111111")
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    gpt_run = workflow.site.parse_run_folder(gpt_run_dir.parent, gpt_run_dir)
+    assert run is not None
+    assert gpt_run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+    (docs / "index.md").write_text(
+        (
+            "# TradingAgents Reports\n\n"
+            "## Daily Decision Summaries\n\n"
+            '<div class="daily-summary-layout" markdown="1">\n\n'
+            '<nav class="daily-summary-rail" aria-label="Analysis dates">\n'
+            "<h3>Dates</h3>\n"
+            "<ul>\n"
+            '<li><a class="daily-summary-date" href="#2026-06-03-decision-summary">2026-06-03</a><span>1 report</span></li>\n'
+            '<li><a class="daily-summary-date daily-summary-date--active" href="#2026-06-02-decision-summary">2026-06-02</a><span>2 reports</span></li>\n'
+            "</ul>\n"
+            "</nav>\n\n"
+            '<div class="daily-summary-tables" markdown="1">\n\n'
+            "## 2026-06-03 Decision Summary\n\n"
+            "| Ticker | Model | Suggestion | Current | Target | Target uplift | 1Y uplift | Confidence | Horizon |\n"
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |\n"
+            "| [MSFT](./MSFT/20260603_opus_20260603_101010/complete_report.md) | `opus` | Hold / Neutral | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |\n\n"
+            "## 2026-06-02 Decision Summary\n\n"
+            "| Ticker | Model | Suggestion | Current | Target | Target uplift | 1Y uplift | Confidence | Horizon |\n"
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |\n"
+            f"| [AAPL](./AAPL/20260602_opus_20260602_101010/complete_report.md) | `opus` | {suggestion} | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |\n"
+            "| [AAPL](./AAPL/20260602_gpt-5.5_20260602_111111/complete_report.md) | `gpt-5.5` | Hold / Neutral | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |\n\n"
+            "</div>\n\n"
+            "</div>\n\n"
+            "## Regeneration Skill\n"
+        ),
+        encoding="utf-8",
+    )
+
+    workflow.validate_homepage(
+        "2026-06-02",
+        {("AAPL", "opus"): run, ("AAPL", "gpt-5.5"): gpt_run},
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("row", "create_report", "error_match"),
+    [
+        (
+            "| [AAPL](./AAPL/20260602_opus_20260602_101010/complete_report.md) | `opus` | Buy / Overweight | n/a | $12.00 | +20.0% | +40.0% | High | 6m |",
+            True,
+            "n/a",
+        ),
+        (
+            "| [AAPL](./AAPL/20260602_opus_20260602_101010/not_report.md) | `opus` | Buy / Overweight | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |",
+            True,
+            "report link",
+        ),
+        (
+            "| [AAPL](./AAPL/20260602_opus_20260602_101010/complete_report.md) | `opus` | Buy / Overweight | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |",
+            False,
+            "missing",
+        ),
+        (
+            "| [AAPL](./AAPL/20260601_opus_20260601_101010/complete_report.md) | `opus` | Buy / Overweight | $10.00 | $12.00 | +20.0% | +40.0% | High | 6m |",
+            True,
+            "20260602_",
+        ),
+    ],
+)
+def test_homepage_validation_rejects_bad_rows(
+    tmp_path,
+    monkeypatch,
+    row,
+    create_report,
+    error_match,
+):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(
+        docs,
+        "AAPL",
+        "20260602_opus_20260602_101010",
+        complete=create_report,
+        stage_files={"5_portfolio/decision.md": "Price Target: 120"},
+    )
+    make_run(docs, "AAPL", "20260601_opus_20260601_101010")
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+    (docs / "index.md").write_text(
+        (
+            "# TradingAgents Reports\n\n"
+            "## 2026-06-02 Decision Summary\n\n"
+            "| Ticker | Model | Suggestion | Current | Target | Target uplift | 1Y uplift | Confidence | Horizon |\n"
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |\n"
+            f"{row}\n\n"
+            "## Regeneration Skill\n"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(workflow.WorkflowError, match=error_match):
+        workflow.validate_homepage("2026-06-02", {("AAPL", "opus"): run})
+
+
+@pytest.mark.unit
+def test_homepage_validation_can_allow_summary_na(tmp_path, monkeypatch):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(docs, "AAPL", "20260602_opus_20260602_101010")
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+    (docs / "index.md").write_text(
+        (
+            "# TradingAgents Reports\n\n"
+            "## 2026-06-02 Decision Summary\n\n"
+            "| Ticker | Model | Suggestion | Current | Target | Target uplift | 1Y uplift | Confidence | Horizon |\n"
+            "| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |\n"
+            "| [AAPL](./AAPL/20260602_opus_20260602_101010/complete_report.md) | `opus` | Buy / Overweight | n/a | $12.00 | n/a | n/a | High | 6m |\n\n"
+            "## Regeneration Skill\n"
+        ),
+        encoding="utf-8",
+    )
+
+    workflow.validate_homepage("2026-06-02", {("AAPL", "opus"): run}, allow_na=True)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("column,value,allow_missing", [
+    (2, "No action stated / Buy", True), (2, "Buy / Not rated", True),
+    (2, "n/a  / Overweight", True),
+    (3, "No verified close", True), (4, "No target set", False), (5, "No target set", True),
+    (6, "No numeric horizon", True), (7, "Not assessed", True), (8, "Not specified", True),
+    (3, "", True), (4, "$0.00", False), (5, "NaN%", False), (6, "+Inf%", False),
+    (9, "Extra column", False),
+])
+def test_explicit_missing_labels_cannot_bypass_strict_validation(tmp_path, monkeypatch, column, value, allow_missing):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    run_dir = make_run(docs, "AAPL", "20260602_opus_20260602_101010")
+    run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
+    assert run is not None
+    monkeypatch.setattr(workflow, "DOCS", docs)
+    cells = [f"[AAPL](./AAPL/{run.folder_name}/complete_report.md)", "`opus`", "Buy / Overweight",
+             "$10.00", "$12.00", "+20.0%", "+40.0%", "High", "6m"]
+    if column == len(cells):
+        cells.append(value)
+    else:
+        cells[column] = value
+    (docs / "index.md").write_text(
+        "## 2026-06-02 Decision Summary\n\n| " + " | ".join(cells) + " |\n",
+        encoding="utf-8",
+    )
+    selected = {("AAPL", "opus"): run}
+    with pytest.raises(workflow.WorkflowError, match="missing/invalid fields"):
+        workflow.validate_homepage("2026-06-02", selected)
+    if allow_missing:
+        workflow.validate_homepage("2026-06-02", selected, allow_na=True)
+    else:
+        with pytest.raises(workflow.WorkflowError, match="missing/invalid fields"):
+            workflow.validate_homepage("2026-06-02", selected, allow_na=True)
+
+
+@pytest.mark.unit
+def test_workflow_command_order_is_process_build_validate(monkeypatch):
+    workflow = load_workflow()
+    run = workflow.site.Run(
+        "AAPL",
+        "2026-06-02",
+        "opus",
+        "2026-06-02 10:10:10",
+        "20260602_opus_20260602_101010",
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(workflow, "discover_runs", lambda docs_dir: {"AAPL": [run]})
+    monkeypatch.setattr(
+        workflow,
+        "select_target_runs",
+        lambda runs, date: {("AAPL", "opus"): run},
+    )
+    monkeypatch.setattr(workflow, "require_full_coverage", lambda runs, selected, date: None)
+    monkeypatch.setattr(workflow, "process_selected_runs", lambda selected: calls.append("process"))
+    monkeypatch.setattr(workflow, "build_reports_site", lambda date: calls.append("build_reports_site"))
+    # Real `mkdocs build --strict` needs the derived per-ticker docs/<TICKER>/
+    # index.md hubs, which don't exist in a fresh checkout (CI). This test only
+    # cares about call order among the three workflow steps below, so stub it.
+    monkeypatch.setattr(workflow, "build_static_site", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        workflow,
+        "validate_homepage",
+        lambda date, selected, **kwargs: calls.append("validate_homepage"),
+    )
+
+    workflow.run_workflow(analysis_date="20260602")
+
+    assert calls == ["process", "build_reports_site", "validate_homepage"]
+
+
+@pytest.mark.unit
+def test_dry_run_uses_copied_docs_and_restores_repo_paths(tmp_path, monkeypatch):
+    workflow = load_workflow()
+    docs = tmp_path / "docs"
+    make_run(docs, "AAPL", "20260602_opus_20260602_101010")
+    observed: dict[str, Path | str] = {}
+    monkeypatch.setattr(workflow, "DOCS", docs)
+
+    def fake_run_workflow(analysis_date, **kwargs):
+        observed["analysis_date"] = analysis_date
+        observed["docs"] = workflow.DOCS
+        assert docs != workflow.DOCS
+        assert (workflow.DOCS / "AAPL" / "20260602_opus_20260602_101010").is_dir()
+        (workflow.DOCS / "dry-run-marker").write_text("temp only", encoding="utf-8")
+
+    monkeypatch.setattr(workflow, "run_workflow", fake_run_workflow)
+
+    workflow.run_dry_run("20260602")
+
+    assert observed["analysis_date"] == "20260602"
+    assert not (docs / "dry-run-marker").exists()
+    assert docs == workflow.DOCS

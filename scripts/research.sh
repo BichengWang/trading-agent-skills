@@ -33,7 +33,8 @@ command -v "$RUNTIME" >/dev/null || { echo "runtime CLI not found: $RUNTIME" >&2
 PROMPT="Use the trading-research skill. Ticker: ${TICKER}. Date: ${DATE}. Depth: ${DEPTH}. \
 Run the full pipeline to completion and finish with the rating, price target and report path."
 
-# Run dirs, reports, results and the memory log live under ~/.tradingagents by default.
+# Reports go to the repo's docs/ (the trading-research skill's finish step); run dirs,
+# results and the memory log live under ~/.tradingagents by default.
 DATA_HOME="$HOME/.tradingagents"
 mkdir -p "$DATA_HOME"
 cd "$ROOT"
