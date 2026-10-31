@@ -1,0 +1,95 @@
+site_name: trading-agent-skills Reports
+site_description: Multi-agent LLM trading analysis runs
+docs_dir: docs
+site_dir: _site
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+
+# Search is intentionally disabled. The client-side search index grew to
+# ~204 MB (full body text of every run, indexed twice), which exhausted browser
+# tab memory and crashed the page ("Aw, Snap! Error 5"). An empty plugins list
+# turns off the default search plugin so no search_index.json is generated.
+plugins: []
+
+extra_css:
+  - stylesheets/extra.css
+
+not_in_nav: |
+  /**/[1-5]_*/**.md
+  /**/complete_report.md
+
+# Stage files are inputs to each completed report. Publishing them as separate
+# pages multiplies the site size without adding a useful public navigation path.
+exclude_docs: |
+  /**/[1-5]_*/**.md
+  /**/complete_report.html
+
+copyright: >
+  For AI testing and experimentation only. Not financial or investment advice
+  or a substitute for a qualified financial adviser. AI-generated reports may
+  contain errors. Do not use them to make investment or trading decisions.

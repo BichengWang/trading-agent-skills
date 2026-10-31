@@ -49,8 +49,9 @@ flowchart TD
 2. Loop: `uv run ta run next --run RUN` prints `{"phase": ..., "roles": [...]}`.
    - `done`: leave the loop.
    - otherwise spawn one subagent per listed role (see "Spawning"), wait until all of them finish, then call `next` again. `next` is the only source of truth for what runs; never decide the order yourself.
-3. `uv run ta run finish --run RUN` prints JSON `{"report_dir", "complete_report", "rating"}`.
-4. Final answer: the rating, the price target (read it from `complete_report`, portfolio manager section), the one-line thesis from the decision summary, and the report path. Do not paste the report.
+3. `uv run ta run finish --run RUN --reports-dir "${TRADINGAGENTS_REPORTS_DIR:-docs}"` prints JSON `{"report_dir", "complete_report", "rating"}`. The report lands in the repo's `docs/<TICKER>/<run>/` site tree unless `TRADINGAGENTS_REPORTS_DIR` is set.
+4. If the report landed under `docs/`: `uv run python scripts/report_workflow.py --analysis-date YYYYMMDD --allow-incomplete` (the run's date) to regenerate `docs/index.md` and the ticker hub and compile `_site/`. A validation failure means the report is missing a decision field: report the error.
+5. Final answer: the rating, the price target (read it from `complete_report`, portfolio manager section), the one-line thesis from the decision summary, and the report path. Do not paste the report.
 
 ## Spawning
 
