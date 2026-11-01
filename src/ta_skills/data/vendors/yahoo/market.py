@@ -68,3 +68,28 @@ def get_closes(symbol: str, start_date: str, end_date: str) -> pd.Series:
     canonical = normalize_symbol(symbol)
     history = yf_retry(lambda: yf.Ticker(canonical).history(start=start_date, end=end_date))
     return history["Close"] if history is not None and "Close" in history else pd.Series(dtype=float)
+
+
+PRICE_HISTORY_COLUMNS = ["close", "adj_close", "high", "low", "splits"]
+
+
+def get_price_history(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """Daily bars from ``start_date`` up to, not including, ``end_date``, keyed by calendar day.
+
+    ``close``/``high``/``low`` are split-adjusted only (comparable with a nominal
+    price target), ``adj_close`` is also dividend-adjusted (total return), and
+    ``splits`` is the split ratio on its day, 0 elsewhere. Bars without a positive
+    close are dropped.
+    """
+    canonical = normalize_symbol(symbol)
+    raw = yf_retry(lambda: yf.Ticker(canonical).history(start=start_date, end=end_date,
+                                                        auto_adjust=False))
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=PRICE_HISTORY_COLUMNS, index=pd.DatetimeIndex([]), dtype=float)
+    frame = pd.DataFrame({
+        "close": raw["Close"], "adj_close": raw["Adj Close"], "high": raw["High"],
+        "low": raw["Low"], "splits": raw.get("Stock Splits", 0.0),
+    })
+    # Yahoo stamps a bar at midnight in its market's zone: meet series on their days.
+    frame.index = pd.DatetimeIndex(frame.index).tz_localize(None).normalize()
+    return frame[(frame["close"] > 0) & (frame["adj_close"] > 0)]

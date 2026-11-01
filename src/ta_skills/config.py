@@ -86,6 +86,10 @@ def build_default_config() -> dict:
         # Where `ta run init` creates run directories ({runs_dir}/{TICKER}/{date}_{time}/).
         "runs_dir": os.getenv("TRADINGAGENTS_RUNS_DIR") or os.path.join(_TRADINGAGENTS_HOME, "runs"),
         "memory_log_path": os.getenv("TRADINGAGENTS_MEMORY_LOG_PATH") or os.path.join(_TRADINGAGENTS_HOME, "memory", "trading_memory.md"),
+        # Forecast evaluation (`ta eval`): ledger, outcomes and scorecard, and the checkout of
+        # the TradingAgents repo whose deploy branch holds the published reports.
+        "eval_dir": os.getenv("TRADINGAGENTS_EVAL_DIR") or os.path.join(_TRADINGAGENTS_HOME, "eval"),
+        "eval_site_repo": os.getenv("TRADINGAGENTS_SITE_REPO"),
         # Optional cap on the number of resolved memory log entries. When set,
         # the oldest resolved entries are pruned once this limit is exceeded.
         # Pending entries are never pruned. None disables rotation entirely.
