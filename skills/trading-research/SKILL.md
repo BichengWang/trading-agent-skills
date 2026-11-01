@@ -67,7 +67,14 @@ Use the Agent (Task) tool with `subagent_type` = the skill name (the `.claude/ag
 
 ### omp
 
-Use the `task` tool, one task per role; the task text is the instruction line above (the role skill is discovered from `.claude/skills`). Put all roles of a phase in a single `tasks[]` batch.
+omp's `task` tool cannot set a subagent's model, so run one `omp -p` per role from the repo root, quick roles with `--thinking low`, deep roles with `--thinking high`, both on `openai-codex/gpt-6.1-sol` (Artificial Analysis Finance & Accounting index on par with Claude Code's `sonnet`/`opus` tiers at a fraction of the cost):
+
+```bash
+omp -p --no-session --cwd "$PWD" --model openai-codex/gpt-6.1-sol --thinking low \
+  "Use the market-analyst skill. Run dir: $RUN. Role: market." > "$RUN/drafts/market.omp.log" 2>&1 &
+```
+
+Background jobs and `drafts/` work as in the Codex section below.
 
 ### Codex
 

@@ -58,7 +58,7 @@ Plus at least one agent runtime: [Claude Code](https://claude.com/claude-code), 
 Start the runtime in this repo and ask for a run:
 
 - Claude Code: `claude`, then "Use the trading-research skill on NVDA for 2026-10-28, depth 2". Role subagents come from `.claude/agents`.
-- omp: `omp` in the repo, same request; roles run as `task` subagents.
+- omp: `omp` in the repo, same request; the orchestrator launches one `omp -p` per role (`openai-codex/gpt-6.1-sol`, thinking `low` quick, `high` deep).
 - Codex: `codex` in the repo, same request; the orchestrator launches one `codex exec` per role (`gpt-6-luna` quick, `gpt-6.1-sol` deep).
 
 Orchestrator inputs: ticker (required), date (default today), analysts (default `market,sentiment,news,fundamentals`), depth (debate and risk rounds, default 1), language, portfolio file, model label.
