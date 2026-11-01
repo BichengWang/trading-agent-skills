@@ -75,7 +75,7 @@ The script runs the orchestrator through `claude -p` (permission mode `dontAsk`,
 
 ### Driving the CLI by hand
 
-`ta run init`, `ta run next`, `ta run prompt`, `ta tool`, `ta run submit`, `ta run finish`, `ta memory due|resolve`. `uv run ta tool list` shows the 12 data tools and their parameters.
+`ta run init`, `ta run next`, `ta run prompt`, `ta tool`, `ta run submit`, `ta run finish`, `ta memory due|resolve`, `ta eval pull|report`. `uv run ta tool list` shows the 12 data tools and their parameters.
 
 ## Configuration
 
@@ -88,12 +88,26 @@ Defaults live in `src/ta_skills/config.py`; environment variables override them 
 | `TRADINGAGENTS_MAX_TOOL_ROUNDS` | tool calls per analyst before wrap-up |
 | `TRADINGAGENTS_BENCHMARK_TICKER` | benchmark for alpha in memory settlement |
 | `TRADINGAGENTS_SENTIMENT_INCLUDE_REDDIT` | include Reddit in sentiment inputs |
-| `TRADINGAGENTS_RUNS_DIR`, `_REPORTS_DIR`, `_RESULTS_DIR`, `_CACHE_DIR`, `_MEMORY_LOG_PATH` | storage paths (default under `~/.tradingagents`) |
+| `TRADINGAGENTS_RUNS_DIR`, `_REPORTS_DIR`, `_RESULTS_DIR`, `_CACHE_DIR`, `_MEMORY_LOG_PATH`, `_EVAL_DIR` | storage paths (default under `~/.tradingagents`) |
+| `TRADINGAGENTS_SITE_REPO` | TradingAgents checkout whose `gh-pages` branch holds the published reports, for `ta eval pull` |
 | `ALPHA_VANTAGE_API_KEY`, `FRED_API_KEY`, `SEC_EDGAR_USER_AGENT`, `TYPESAFE_API_KEY` | optional data vendor keys; Yahoo, Polymarket, Reddit and StockTwits need none |
 
 ## Memory log
 
 Every finished run stores its decision in `memory_log_path` (default `~/.tradingagents/memory/trading_memory.md`). At the start of each later run the `memory` role (`decision-reflection`) calls `ta memory due`: for decisions whose holding window has traded, the CLI computes raw and benchmark-relative return and the agent writes a reflection, stored with `ta memory resolve`. The portfolio manager's prompt receives the resulting past context.
+
+## Forecast evaluation
+
+`ta eval` measures how accurate published decisions turned out to be once the market has moved past them. It reads the record from the TradingAgents site's deploy branch, not from local report Markdown:
+
+```bash
+uv run ta eval pull --repo ~/my-code/TradingAgents   # fetch origin/gh-pages; append new runs to the ledger
+uv run ta eval report [--as-of YYYY-MM-DD]           # price every forecast; write the scorecard
+```
+
+- `pull` fetches only the remote-tracking branch, leaving the checkout's working tree untouched. It appends each run's final decision (rating, reported price, price target, confidence, time horizon) to `<eval_dir>/forecasts.jsonl`. A run path never changes, so a forecast can't be rewritten once it has been scored.
+- `report` follows the memory-settlement conventions: entry is the first close after the analysis date; a horizon is scored only after its whole window has traded on or before `--as-of` (default yesterday); returns use adjusted closes; alpha is measured against the regional benchmark. It skips runs generated after the entry session and keeps the newest rerun for each ticker, model and date.
+- The scorecard (`scorecard.md`, `scorecard.json`, plus `outcomes.csv` per forecast) covers 5, 21, 63, 126 and 252 trading days. For ratings it reports per-date rank IC with a block-bootstrap interval and a permutation p-value, hit rates, the long–short spread, a momentum baseline, IC within each ticker, and a breakdown by model and by confidence. For price targets it reports skill against a random walk at the start and end of the declared horizon, along with calibration slope and touch rate. It also checks integrity: whether the reported price matches the actual close, and whether the target points the same way as the rating.
 
 ## Development
 

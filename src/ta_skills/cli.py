@@ -72,6 +72,54 @@ def _cmd_memory_resolve(args) -> None:
     _print_json({"ticker": args.ticker, "date": args.date, "resolved": resolved})
 
 
+# --- ta eval ----------------------------------------------------------------------------------
+
+
+def _cmd_eval_pull(args) -> None:
+    from pathlib import Path
+
+    from ta_skills.config import get_config
+    from ta_skills.evaluation.ledger import pull
+
+    config = get_config()
+    repo = args.repo or config.get("eval_site_repo")
+    if not repo:
+        raise run.RunError("ta eval pull needs --repo (or TRADINGAGENTS_SITE_REPO): a TradingAgents "
+                           "checkout whose remote has the published site branch")
+    ledger = Path(config["eval_dir"]).expanduser() / "forecasts.jsonl"
+    _print_json(pull(ledger, Path(repo), remote=args.remote, branch=args.branch,
+                     fetch=not args.no_fetch))
+
+
+def _cmd_eval_report(args) -> None:
+    from datetime import date, timedelta
+    from pathlib import Path
+
+    from ta_skills.config import get_config
+    from ta_skills.evaluation.ledger import load_ledger
+    from ta_skills.evaluation.metrics import build_scorecard, render_markdown
+    from ta_skills.evaluation.outcomes import score_ledger
+
+    config = get_config()
+    out = Path(config["eval_dir"]).expanduser()
+    ledger = out / "forecasts.jsonl"
+    forecasts = load_ledger(ledger)
+    if not forecasts:
+        raise run.RunError(f"no forecasts in {ledger}; run `ta eval pull` first")
+    # Yesterday by default: today's bar may still be trading.
+    as_of = args.as_of or (date.today() - timedelta(days=1)).isoformat()
+    outcomes, failed = score_ledger(forecasts, config, as_of)
+    outcomes.to_csv(out / "outcomes.csv", index=False)
+    card = build_scorecard(outcomes, as_of, {"ledger": str(ledger),
+                                             "commit": forecasts[-1]["source_commit"]})
+    card["coverage"]["price_failures"] = failed
+    (out / "scorecard.json").write_text(json.dumps(card, indent=2, default=str), encoding="utf-8")
+    (out / "scorecard.md").write_text(render_markdown(card), encoding="utf-8")
+    _print_json({"as_of": as_of, "decisions": card["coverage"]["decisions"],
+                 "price_failures": failed, "scorecard": str(out / "scorecard.md"),
+                 "outcomes": str(out / "outcomes.csv")})
+
+
 # --- ta tool ----------------------------------------------------------------------------------
 
 
@@ -157,7 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
         "for the TradingAgents role skills.",
     )
     parser.add_argument("--version", action="version", version=f"ta {__version__}")
-    top = parser.add_subparsers(dest="group", required=True, metavar="{run,tool,memory}")
+    top = parser.add_subparsers(dest="group", required=True, metavar="{run,tool,memory,eval}")
 
     # ta run ...
     run_p = top.add_parser("run", help="create and drive a research run")
@@ -227,6 +275,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--date", required=True)
     p.add_argument("--file", required=True, metavar="PATH")
     p.set_defaults(func=_cmd_memory_resolve)
+
+    # ta eval ...
+    ev = top.add_parser("eval", help="score published forecasts against realized prices")
+    ev_sub = ev.add_subparsers(dest="command", required=True)
+    p = ev_sub.add_parser("pull", help="append newly published decisions to the forecast ledger")
+    p.add_argument("--repo", metavar="DIR", help="TradingAgents checkout (default: "
+                   "TRADINGAGENTS_SITE_REPO)")
+    p.add_argument("--remote", default="origin")
+    p.add_argument("--branch", default="gh-pages", help="published site branch")
+    p.add_argument("--no-fetch", action="store_true", help="read the ref as already fetched")
+    p.set_defaults(func=_cmd_eval_pull)
+    p = ev_sub.add_parser("report", help="price the ledger's forecasts and write the scorecard")
+    p.add_argument("--as-of", metavar="YYYY-MM-DD", help="last price bar to use (default: yesterday)")
+    p.set_defaults(func=_cmd_eval_report)
     return parser
 
 
