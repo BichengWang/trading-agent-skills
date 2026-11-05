@@ -450,10 +450,6 @@ def get_spec(name: str) -> IndicatorSpec:
     return spec
 
 
-def supported_names() -> list[str]:
-    return list(INDICATORS.keys())
-
-
 def snapshot_indicators() -> tuple[str, ...]:
     """Indicator names included in the verified market snapshot."""
     return tuple(name for name, spec in INDICATORS.items() if spec.in_snapshot)

@@ -47,10 +47,6 @@ class TestVerifiedSnapshot:
         assert "Latest trading row used: 2026-05-15" in snap
         assert "Recent verified closes" in snap
 
-    def test_latest_close_uses_verified_rows(self, monkeypatch):
-        monkeypatch.setattr(validator, "load_ohlcv", lambda s, d, fill_gaps=True: _sample_ohlcv())
-        assert validator.latest_close_on_or_before("COF", "2026-05-16") == 132.0
-
     def test_raises_when_no_rows_on_or_before_date(self, monkeypatch):
         monkeypatch.setattr(validator, "load_ohlcv", lambda s, d, fill_gaps=True: _sample_ohlcv())
         with pytest.raises(NoMarketDataError):

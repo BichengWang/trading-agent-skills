@@ -7,13 +7,13 @@ before the consolidated report is assembled, the run folder ends up with
 a file that doesn't exist, breaking ``mkdocs build --strict``.
 
 This script rebuilds ``complete_report.md`` from the stage files, mirroring
-the section layout and heading normalization of ``save_report_to_disk`` in
-``cli/main.py`` so reassembled reports are byte-compatible with freshly
-generated ones.
+the section layout and heading normalization of ``write_report_tree`` in
+``ta_skills/reporting.py`` so reassembled reports are byte-compatible with
+freshly generated ones.
 
 Run locally:
 
-    python scripts/report_workflow.py
+    uv run python scripts/report_workflow.py
 
 Idempotent and non-destructive: only writes ``complete_report.md`` for run
 folders that are missing it but have at least one stage file. Existing
@@ -38,7 +38,7 @@ DOCS = ROOT / "docs"
 RUN_TS_RE = re.compile(r"_(?P<d>\d{8})_(?P<t>\d{6})$")
 
 # (section heading, [(stage file relative path, agent H3 label), ...]).
-# Order and labels match ``save_report_to_disk`` in cli/main.py.
+# Order and labels match ``_SECTIONS`` in ta_skills/reporting.py.
 SECTIONS: list[tuple[str, list[tuple[str, str]]]] = [
     (
         "## I. Analyst Team Reports",
