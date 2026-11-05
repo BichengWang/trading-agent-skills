@@ -66,12 +66,6 @@ def _fmt(value) -> str:
     return str(value)
 
 
-def latest_close_on_or_before(symbol: str, curr_date: str) -> float | None:
-    """Return the latest verified close on or before the analysis date."""
-    close = _verified_rows(symbol, curr_date).iloc[-1].get("Close")
-    return None if close is None or pd.isna(close) else float(close)
-
-
 def build_verified_market_snapshot(
     symbol: str,
     as_of_date: str,

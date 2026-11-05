@@ -26,7 +26,7 @@ RATINGS_5_TIER: tuple[str, ...] = (
 # Signal emitted when the model's decision has no recognizable rating. It is not
 # a tradeable position: it flags output that needs a human/re-run rather than
 # silently degrading to Hold. Callers that map the signal onto the 5-tier enum
-# (e.g. ``PortfolioRating(signal)``) should guard with ``is_review`` first.
+# (e.g. ``PortfolioRating(signal)``) should check for it first.
 RATING_REVIEW = "REVIEW"
 
 _RATING_SET = {r.lower() for r in RATINGS_5_TIER}
@@ -110,8 +110,3 @@ def run_rating(final_state: dict) -> str:
     version completed and a checkpoint hands back unchanged.
     """
     return final_state.get("final_rating") or parse_rating(final_state.get("final_trade_decision", ""))
-
-
-def is_review(signal: str) -> bool:
-    """Whether a signal is the non-tradeable REVIEW sentinel (#1170)."""
-    return signal == RATING_REVIEW
