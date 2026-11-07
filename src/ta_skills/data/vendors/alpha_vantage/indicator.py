@@ -13,7 +13,7 @@ def get_indicator(
     as_of_date: str,
     look_back_days: int,
     interval: str = "daily",
-    series_type: str = "close"
+    series_type: str = "close",
 ) -> str:
     """
     Returns Alpha Vantage technical indicator values over a time window.
@@ -66,13 +66,13 @@ def get_indicator(
     try:
         data = _make_api_request(spec.av_function, params)
 
-        lines = data.strip().split('\n')
+        lines = data.strip().split("\n")
         if len(lines) < 2:
             return f"Error: No data returned for {indicator}"
 
-        header = [col.strip() for col in lines[0].split(',')]
+        header = [col.strip() for col in lines[0].split(",")]
         try:
-            date_col_idx = header.index('time')
+            date_col_idx = header.index("time")
         except ValueError:
             return f"Error: 'time' column not found in data for {indicator}. Available columns: {header}"
 
@@ -89,7 +89,7 @@ def get_indicator(
         for line in lines[1:]:
             if not line.strip():
                 continue
-            values = line.split(',')
+            values = line.split(",")
             if len(values) > value_col_idx:
                 try:
                     date_str = values[date_col_idx].strip()

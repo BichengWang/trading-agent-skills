@@ -199,7 +199,10 @@ def test_generated_pages_do_not_end_with_extra_blank_line():
     summaries = [builder.DailySummary("2026-06-02", [summary_row(builder, "AAPL", "run")])]
 
     home = builder.build_home({"AAPL": [run]}, 1, summaries, "20260602")
-    assert "[Everyday Financial Planning at Altair](https://altairworld.com/services/financial-planning)" in home
+    assert (
+        "[Everyday Financial Planning at Altair](https://altairworld.com/services/financial-planning)"
+        in home
+    )
     hub = builder.build_ticker_hub("AAPL", [run])
 
     assert home.endswith("\n")
@@ -223,36 +226,54 @@ def test_horizon_months_handles_year_ranges():
 def test_current_price_parser_handles_remaining_report_phrasings():
     builder = load_builder()
 
-    assert builder.extract_current_price(
-        "Last Close: $999.00\n",
-        "**Current Price**: $123.45\n",
-        "",
-    ) == 123.45
-    assert builder.extract_current_price(
-        "Last Close: $999.00\n",
-        "**Current Price**: n/a\n",
-        "",
-    ) is None
-    assert builder.extract_current_price(
-        "The stock has since declined sharply again, closing at **$124.22 on May 29**.",
-        "",
-        "",
-    ) == 124.22
-    assert builder.extract_current_price(
-        "**Last Close (May 29):** $84.44\n",
-        "",
-        "",
-    ) == 84.44
-    assert builder.extract_current_price(
-        "Last Close: **$87.24** (June 1, 2026)\n",
-        "",
-        "",
-    ) == 87.24
-    assert builder.extract_current_price(
-        "| **Close Price** | $46.88 | Caution |\n",
-        "",
-        "",
-    ) == 46.88
+    assert (
+        builder.extract_current_price(
+            "Last Close: $999.00\n",
+            "**Current Price**: $123.45\n",
+            "",
+        )
+        == 123.45
+    )
+    assert (
+        builder.extract_current_price(
+            "Last Close: $999.00\n",
+            "**Current Price**: n/a\n",
+            "",
+        )
+        is None
+    )
+    assert (
+        builder.extract_current_price(
+            "The stock has since declined sharply again, closing at **$124.22 on May 29**.",
+            "",
+            "",
+        )
+        == 124.22
+    )
+    assert (
+        builder.extract_current_price(
+            "**Last Close (May 29):** $84.44\n",
+            "",
+            "",
+        )
+        == 84.44
+    )
+    assert (
+        builder.extract_current_price(
+            "Last Close: **$87.24** (June 1, 2026)\n",
+            "",
+            "",
+        )
+        == 87.24
+    )
+    assert (
+        builder.extract_current_price(
+            "| **Close Price** | $46.88 | Caution |\n",
+            "",
+            "",
+        )
+        == 46.88
+    )
 
 
 @pytest.mark.unit
@@ -370,8 +391,14 @@ def test_summary_row_preserves_missing_target(tmp_path, monkeypatch):
 def test_summary_explains_each_missing_input():
     builder = load_builder()
     row = summary_row(builder, "AAPL", "aapl-0602")._replace(
-        rating="n/a", action="n/a", current_price=None, price_target=None,
-        target_uplift=None, annualized_uplift=None, confidence="n/a", horizon="not provided",
+        rating="n/a",
+        action="n/a",
+        current_price=None,
+        price_target=None,
+        target_uplift=None,
+        annualized_uplift=None,
+        confidence="n/a",
+        horizon="not provided",
     )
     text = "\n".join(builder.build_decision_summary([row]))
     assert "n/a" not in text.lower()
@@ -393,8 +420,13 @@ def test_targetless_latest_run_is_excluded_and_counted(monkeypatch):
     older = builder.Run("AAPL", "2026-10-01", "model", "2026-10-01 10:00:00", "older")
     newer = older._replace(run_started="2026-10-01 12:00:00", folder_name="newer")
     supported = older._replace(ticker="MSFT", folder_name="supported")
-    monkeypatch.setattr(builder, "build_summary_row", lambda run: summary_row(
-        builder, run.ticker, run.folder_name)._replace(price_target=None if run == newer else 120.0))
+    monkeypatch.setattr(
+        builder,
+        "build_summary_row",
+        lambda run: summary_row(builder, run.ticker, run.folder_name)._replace(
+            price_target=None if run == newer else 120.0
+        ),
+    )
     summaries = builder.build_daily_summaries({"AAPL": [older, newer], "MSFT": [supported]})
     assert [row.ticker for row in summaries[0].rows] == ["MSFT"]
     assert summaries[0].incomplete_count == 1
@@ -433,33 +465,63 @@ def test_main_removes_stale_generated_ticker_hubs(tmp_path, monkeypatch):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("text,expected", [
-    ("AVGO closed at **$343.64** on October 1.", 343.64),
-    ("MELI closed at **1685.12** on October 1.", 1685.12),
-    ("The latest verified close was **$17.56** on October 1.", 17.56),
-    ("The verified 2026-10-01 row is open 611.01, high 619.28, low 601.50, close 615.73.", 615.73),
-    ("The verified 2026-10-01 session was **O 54.82, H 55.24, L 54.01, C 55.22**.", 55.22),
-    ("The October 1 verified close was **$230.86**.", 230.86),
-    ("On October 1, 2026, LLY opened at $1,155.00 then closed at **$1,149.85**.", 1149.85),
-    ("The latest trading row is September 30, 2026.\n- **Close:** **$739.77**", 739.77),
-    ("NVDA closed at $175.35 on April 1.\nThe October 1 verified close was $230.86.", 230.86),
-    ("AVGO closed at $120.00 on October 1, 2025.", None),
-    ("Entry proposal: $120.00\n### Sentiment Analyst\nLatest close: $999", None),
-])
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("AVGO closed at **$343.64** on October 1.", 343.64),
+        ("MELI closed at **1685.12** on October 1.", 1685.12),
+        ("The latest verified close was **$17.56** on October 1.", 17.56),
+        (
+            "The verified 2026-10-01 row is open 611.01, high 619.28, low 601.50, close 615.73.",
+            615.73,
+        ),
+        ("The verified 2026-10-01 session was **O 54.82, H 55.24, L 54.01, C 55.22**.", 55.22),
+        ("The October 1 verified close was **$230.86**.", 230.86),
+        ("On October 1, 2026, LLY opened at $1,155.00 then closed at **$1,149.85**.", 1149.85),
+        ("The latest trading row is September 30, 2026.\n- **Close:** **$739.77**", 739.77),
+        ("NVDA closed at $175.35 on April 1.\nThe October 1 verified close was $230.86.", 230.86),
+        ("AVGO closed at $120.00 on October 1, 2025.", None),
+        ("Entry proposal: $120.00\n### Sentiment Analyst\nLatest close: $999", None),
+    ],
+)
 def test_recent_close_formats_and_historical_boundaries(text, expected):
     builder = load_builder()
     assert builder.extract_current_price(text, "", "**Entry Price**: 100", "2026-10-01") == expected
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("text", ["**Confidence**: High", "**Confidence:** High", "- **Confidence:** **High**", "| Confidence | High |"])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "**Confidence**: High",
+        "**Confidence:** High",
+        "- **Confidence:** **High**",
+        "| Confidence | High |",
+    ],
+)
 def test_confidence_field_formats(text):
     assert load_builder().extract_confidence(text) == "High"
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("value", ["n/a", "not provided", "2026-10-01", "15%", "150-160", "150 to 160", "nan", "inf",
-                                   "6 months", "20 basis points", "15 percent", "6-month target", "6 trading days"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "n/a",
+        "not provided",
+        "2026-10-01",
+        "15%",
+        "150-160",
+        "150 to 160",
+        "nan",
+        "inf",
+        "6 months",
+        "20 basis points",
+        "15 percent",
+        "6-month target",
+        "6 trading days",
+    ],
+)
 def test_price_parser_does_not_turn_non_prices_into_quotes(value):
     assert load_builder().parse_money(value) is None
 
@@ -468,9 +530,14 @@ def test_small_structured_target_survives_completion_guard():
     from ta_skills.report_fields import extract_price_target, require_price_target
     from ta_skills.schemas import PortfolioDecision, render_pm_decision
 
-    rendered = render_pm_decision(PortfolioDecision(
-        rating="Hold", executive_summary="Retain current position.", investment_thesis="Supported micro-price objective.",
-        price_target=1e-5))
+    rendered = render_pm_decision(
+        PortfolioDecision(
+            rating="Hold",
+            executive_summary="Retain current position.",
+            investment_thesis="Supported micro-price objective.",
+            price_target=1e-5,
+        )
+    )
     require_price_target(rendered)
     assert extract_price_target(rendered) == 1e-5
     builder = load_builder()
@@ -496,19 +563,33 @@ def test_structured_decision_survives_report_writer_and_summary(tmp_path, monkey
     docs = tmp_path / "docs"
     folder = "20261001_model_20261001_123000"
     decision = PortfolioDecision(
-        rating="Buy", executive_summary="Enter gradually.", investment_thesis="Evidence.",
-        current_price=100, price_target=120, confidence="low", time_horizon="3–6 months",
+        rating="Buy",
+        executive_summary="Enter gradually.",
+        investment_thesis="Evidence.",
+        current_price=100,
+        price_target=120,
+        confidence="low",
+        time_horizon="3–6 months",
     )
-    write_report_tree({
-        "market_report": "Latest close: $100", "sentiment_report": "**Confidence:** High",
-        "investment_debate_state": {"history": "Debate."},
-        "investment_plan": "Retain a small allocation.",
-        "trader_investment_plan": render_trader_proposal(TraderProposal(action="Buy", reasoning="Evidence.")),
-        "final_trade_decision": render_pm_decision(decision),
-    }, "AAPL", docs / "AAPL" / folder)
+    write_report_tree(
+        {
+            "market_report": "Latest close: $100",
+            "sentiment_report": "**Confidence:** High",
+            "investment_debate_state": {"history": "Debate."},
+            "investment_plan": "Retain a small allocation.",
+            "trader_investment_plan": render_trader_proposal(
+                TraderProposal(action="Buy", reasoning="Evidence.")
+            ),
+            "final_trade_decision": render_pm_decision(decision),
+        },
+        "AAPL",
+        docs / "AAPL" / folder,
+    )
     monkeypatch.setattr(builder, "DOCS_DIR", docs)
 
-    row = builder.build_summary_row(builder.Run("AAPL", "2026-10-01", "model", "2026-10-01 12:30:00", folder))
+    row = builder.build_summary_row(
+        builder.Run("AAPL", "2026-10-01", "model", "2026-10-01 12:30:00", folder)
+    )
     assert row.current_price == 100
     assert row.price_target == 120
     assert row.target_uplift == pytest.approx(0.2)
@@ -525,20 +606,26 @@ def test_next_line_target_does_not_consume_another_field():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("text", [
-    "Latest close: $100 on October 1, ahead of October 5 earnings.",
-    "Ahead of October 5 earnings, latest close: $100 on October 1.",
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Latest close: $100 on October 1, ahead of October 5 earnings.",
+        "Ahead of October 5 earnings, latest close: $100 on October 1.",
+    ],
+)
 def test_close_date_ignores_a_separate_future_catalyst(text):
     builder = load_builder()
     assert builder.extract_current_price(text, "", "", "2026-10-01") == 100
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("text", [
-    "As of October 5, latest close: $100.",
-    "Ahead of October 5 earnings, latest close: $100 on October 2.",
-    "The verified 2026-10-02 session was O 99, H 101, L 98, C 100.",
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "As of October 5, latest close: $100.",
+        "Ahead of October 5 earnings, latest close: $100 on October 2.",
+        "The verified 2026-10-02 session was O 99, H 101, L 98, C 100.",
+    ],
+)
 def test_future_quote_dates_remain_unavailable(text):
     assert load_builder().extract_current_price(text, "", "", "2026-10-01") is None

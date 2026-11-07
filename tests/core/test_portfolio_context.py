@@ -41,7 +41,9 @@ def test_flat_book_says_no_position_rather_than_omitting_it():
 
 @pytest.mark.unit
 def test_a_ticker_held_under_another_spelling_is_matched():
-    text = PortfolioContext.model_validate({"positions": [{"ticker": "aapl", "quantity": 5}]}).render("AAPL")
+    text = PortfolioContext.model_validate(
+        {"positions": [{"ticker": "aapl", "quantity": 5}]}
+    ).render("AAPL")
     assert "No current position" not in text and "5" in text
 
 
@@ -54,7 +56,9 @@ def test_absent_context_is_reported_as_not_provided():
 
 @pytest.mark.unit
 def test_rendered_context_reaches_the_agents_from_state():
-    block = get_portfolio_context_from_state({"portfolio_context": "Portfolio: flat", "company_of_interest": "AAPL"})
+    block = get_portfolio_context_from_state(
+        {"portfolio_context": "Portfolio: flat", "company_of_interest": "AAPL"}
+    )
     assert block == "Portfolio: flat"
 
 
@@ -73,20 +77,6 @@ def test_load_reads_a_valid_file(tmp_path):
     assert load_portfolio(good).positions[0].ticker == "AAPL"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @pytest.mark.unit
 def test_research_layer_sizes_against_a_standard_allocation():
     """The research team is blind to the book, so its plan cannot promise
@@ -101,36 +91,52 @@ def test_research_layer_sizes_against_a_standard_allocation():
 @pytest.mark.unit
 def test_partial_portfolio_states_only_what_it_was_given():
     """Cash omitted is not cash zero; the line is absent rather than invented."""
-    text = PortfolioContext.model_validate({"positions": [{"ticker": "AAPL", "quantity": 5}]}).render("AAPL")
+    text = PortfolioContext.model_validate(
+        {"positions": [{"ticker": "AAPL", "quantity": 5}]}
+    ).render("AAPL")
     assert "Cash" not in text
     assert "5" in text
 
 
-
-
-
-
 @pytest.mark.unit
-@pytest.mark.parametrize("role", ["trader", "aggressive", "conservative", "neutral", "portfolio_manager"])
+@pytest.mark.parametrize(
+    "role", ["trader", "aggressive", "conservative", "neutral", "portfolio_manager"]
+)
 def test_decision_agents_see_the_portfolio(role):
     """The prompt each decision agent gets carries the portfolio block."""
     from ta_skills import prompts, run
 
     state = {
-        "company_of_interest": "AAPL", "trade_date": "2026-08-14", "asset_type": "stock",
-        "instrument_context": "", "market_report": "M", "sentiment_report": "S",
-        "news_report": "N", "fundamentals_report": "F", "investment_plan": "P",
-        "trader_investment_plan": "T", "past_context": "",
+        "company_of_interest": "AAPL",
+        "trade_date": "2026-08-14",
+        "asset_type": "stock",
+        "instrument_context": "",
+        "market_report": "M",
+        "sentiment_report": "S",
+        "news_report": "N",
+        "fundamentals_report": "F",
+        "investment_plan": "P",
+        "trader_investment_plan": "T",
+        "past_context": "",
         "portfolio_context": "PORTFOLIO_BLOCK_MARKER",
         "investment_debate_state": {"history": "", "count": 0},
-        "risk_debate_state": {"history": "", "latest_speaker": "", "count": 0,
-                              "aggressive_history": "", "conservative_history": "", "neutral_history": "",
-                              "current_aggressive_response": "", "current_conservative_response": "",
-                              "current_neutral_response": ""},
+        "risk_debate_state": {
+            "history": "",
+            "latest_speaker": "",
+            "count": 0,
+            "aggressive_history": "",
+            "conservative_history": "",
+            "neutral_history": "",
+            "current_aggressive_response": "",
+            "current_conservative_response": "",
+            "current_neutral_response": "",
+        },
         "run": {"output_language": "English", "max_tool_rounds": 20, "tool_calls": {}},
     }
     system, human = prompts.render_skill(run.ROLE_SKILL[role], run.prompt_values(role, state))
-    assert "PORTFOLIO_BLOCK_MARKER" in system + (human or ""), f"{role} prompt lacks the portfolio block"
+    assert "PORTFOLIO_BLOCK_MARKER" in system + (human or ""), (
+        f"{role} prompt lacks the portfolio block"
+    )
 
 
 @pytest.mark.unit

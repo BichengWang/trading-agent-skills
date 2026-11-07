@@ -64,9 +64,7 @@ class TestObvWindowWiring:
         frame = _ohlcv([10.0, 11.0, 11.0, 9.0], volumes=[100, 200, 250, 300])
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "obv", "2026-06-04", 3
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "obv", "2026-06-04", 3)
         assert "## obv values" in out
         assert "2026-06-04: -100.0" in out
         assert reg.INDICATORS["obv"].description in out
@@ -87,9 +85,7 @@ class TestMdiColumnMapping:
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
         expected = float(wrap(frame.copy())["ndi"].iloc[-1])
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "mdi", "2026-06-04", 3
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "mdi", "2026-06-04", 3)
         reported = float(out.split("2026-06-04: ")[1].splitlines()[0])
         assert reported == pytest.approx(expected)
 
@@ -98,7 +94,18 @@ class TestMdiColumnMapping:
 class TestMenuAndSnapshotAdditions:
     def test_new_names_appear_in_prompt_menu(self):
         section = reg.render_prompt_section()
-        for name in ("adx", "pdi", "mdi", "kdjk", "kdjd", "kdjj", "stochrsi", "obv", "supertrend", "mfi"):
+        for name in (
+            "adx",
+            "pdi",
+            "mdi",
+            "kdjk",
+            "kdjd",
+            "kdjj",
+            "stochrsi",
+            "obv",
+            "supertrend",
+            "mfi",
+        ):
             assert f"- {name}: " in section
         assert "Trend Strength:" in section
         assert "Stochastic:" in section
@@ -106,9 +113,17 @@ class TestMenuAndSnapshotAdditions:
     def test_snapshot_gains_mfi_adx_kdjk_only(self):
         names = reg.snapshot_indicators()
         legacy = {
-            "close_10_ema", "close_50_sma", "close_200_sma",
-            "rsi", "boll", "boll_ub", "boll_lb",
-            "macd", "macds", "macdh", "atr",
+            "close_10_ema",
+            "close_50_sma",
+            "close_200_sma",
+            "rsi",
+            "boll",
+            "boll_ub",
+            "boll_lb",
+            "macd",
+            "macds",
+            "macdh",
+            "atr",
         }
         assert set(names) == legacy | {"mfi", "adx", "kdjk"}
 

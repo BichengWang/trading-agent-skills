@@ -122,9 +122,7 @@ class TestYFinanceWindowWiring:
         frame = _ohlcv([100 - i for i in range(320)])
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "td_9", "2026-06-04", 30
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "td_9", "2026-06-04", 30)
         for token in ("Tier 1", "Tier 2", "Tier 3", "Weekly", "Monthly", "Daily"):
             assert token in out
 

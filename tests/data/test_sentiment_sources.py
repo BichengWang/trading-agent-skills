@@ -7,8 +7,13 @@ from ta_skills.config import set_config
 from ta_skills.data.vendors.reddit import CRYPTO_SUBREDDITS, DEFAULT_SUBREDDITS
 
 KEYS = {
-    "start_date", "end_date", "news_block", "stocktwits_block", "reddit_block",
-    "subreddits", "character",
+    "start_date",
+    "end_date",
+    "news_block",
+    "stocktwits_block",
+    "reddit_block",
+    "subreddits",
+    "character",
 }
 
 
@@ -45,15 +50,23 @@ def test_every_source_is_trimmed_to_the_seven_days_up_to_the_trade_date(sources)
     assert set(out) == KEYS
     assert (out["start_date"], out["end_date"]) == ("2026-01-02", "2026-01-09")
     assert sources["news"] == (
-        "get_news", "NVDA", "2026-01-09", {"start_date": "2026-01-02", "end_date": "2026-01-09"}
+        "get_news",
+        "NVDA",
+        "2026-01-09",
+        {"start_date": "2026-01-02", "end_date": "2026-01-09"},
     )
     window = {"start_date": "2026-01-02", "end_date": "2026-01-09"}
     assert sources["stocktwits"] == ("NVDA", {"limit": 30, "screen": sources["screen"], **window})
     assert sources["reddit"] == (
-        "NVDA", DEFAULT_SUBREDDITS, {"screen": sources["screen"], **window}
+        "NVDA",
+        DEFAULT_SUBREDDITS,
+        {"screen": sources["screen"], **window},
     )
     assert (out["news_block"], out["stocktwits_block"], out["reddit_block"]) == (
-        "news", "stocktwits", "reddit")
+        "news",
+        "stocktwits",
+        "reddit",
+    )
 
 
 @pytest.mark.unit

@@ -53,8 +53,20 @@ def headings(markdown: str) -> list[str]:
 
 def run_everything(capsys, tmp_path, *extra_init) -> tuple[Path, list[str]]:
     code, out, err = ta(
-        capsys, "run", "init", "--ticker", "NVDA", "--date", TRADE_DATE, "--provider", "omp",
-        "--deep-model", "gpt-6-sol", "--quick-model", "gpt-6-luna", *extra_init,
+        capsys,
+        "run",
+        "init",
+        "--ticker",
+        "NVDA",
+        "--date",
+        TRADE_DATE,
+        "--provider",
+        "omp",
+        "--deep-model",
+        "gpt-6-sol",
+        "--quick-model",
+        "gpt-6-luna",
+        *extra_init,
     )
     assert code == 0, err
     run_dir = Path(out.strip())
@@ -75,7 +87,9 @@ def run_everything(capsys, tmp_path, *extra_init) -> tuple[Path, list[str]]:
             draft = tmp_path / f"{role}_{turn}.{ext}"
             draft.write_text(content, encoding="utf-8")
             args = ["run", "submit", role, "--run", str(run_dir)]
-            code, out, err = ta(capsys, *args, *([] if role == "memory" else ["--file", str(draft)]))
+            code, out, err = ta(
+                capsys, *args, *([] if role == "memory" else ["--file", str(draft)])
+            )
             assert code == 0, err
             assert json.loads(out)["accepted"] is True
             order.append(role)
@@ -85,11 +99,21 @@ def run_everything(capsys, tmp_path, *extra_init) -> tuple[Path, list[str]]:
 def test_a_complete_run_writes_the_report_tree(capsys, tmp_path, isolated_config):
     run_dir, order = run_everything(capsys, tmp_path)
     assert order[:5] == ["market", "sentiment", "news", "fundamentals", "memory"]
-    assert order[5:] == ["bull", "bear", "research_manager", "trader", "aggressive", "conservative",
-                         "neutral", "portfolio_manager"]
+    assert order[5:] == [
+        "bull",
+        "bear",
+        "research_manager",
+        "trader",
+        "aggressive",
+        "conservative",
+        "neutral",
+        "portfolio_manager",
+    ]
 
     reports = tmp_path / "reports-out"
-    code, out, err = ta(capsys, "run", "finish", "--run", str(run_dir), "--reports-dir", str(reports))
+    code, out, err = ta(
+        capsys, "run", "finish", "--run", str(run_dir), "--reports-dir", str(reports)
+    )
     assert code == 0, err
     result = json.loads(out)
     assert result["rating"] == "Overweight"
@@ -100,52 +124,99 @@ def test_a_complete_run_writes_the_report_tree(capsys, tmp_path, isolated_config
     assert Path(result["complete_report"]) == report_dir / "complete_report.md"
 
     tree = sorted(str(p.relative_to(report_dir)) for p in report_dir.rglob("*") if p.is_file())
-    assert tree == sorted([
-        "complete_report.html", "complete_report.md",
-        "1_analysts/market.md", "1_analysts/sentiment.md", "1_analysts/news.md",
-        "1_analysts/fundamentals.md",
-        "2_research/bull.md", "2_research/bear.md", "2_research/manager.md",
-        "3_trading/trader.md",
-        "4_risk/aggressive.md", "4_risk/conservative.md", "4_risk/neutral.md",
-        "5_portfolio/decision.md",
-    ])
+    assert tree == sorted(
+        [
+            "complete_report.html",
+            "complete_report.md",
+            "1_analysts/market.md",
+            "1_analysts/sentiment.md",
+            "1_analysts/news.md",
+            "1_analysts/fundamentals.md",
+            "2_research/bull.md",
+            "2_research/bear.md",
+            "2_research/manager.md",
+            "3_trading/trader.md",
+            "4_risk/aggressive.md",
+            "4_risk/conservative.md",
+            "4_risk/neutral.md",
+            "5_portfolio/decision.md",
+        ]
+    )
 
     complete = (report_dir / "complete_report.md").read_text(encoding="utf-8")
     assert headings(complete) == EXPECTED_HEADINGS
     header = complete.split("## I. ")[0]
     assert f"- Analysis date: {TRADE_DATE}" in header
     assert "- Rating: Overweight" in header
-    assert f"- trading-agent-skills {ta_skills.__version__}: omp, deep gpt-6-sol, quick gpt-6-luna" in header
+    assert (
+        f"- trading-agent-skills {ta_skills.__version__}: omp, deep gpt-6-sol, quick gpt-6-luna"
+        in header
+    )
     assert "TradingAgents " not in header
-    assert "- Analysts: market, sentiment, news, fundamentals; research debate rounds 1, risk debate rounds 1" in header
+    assert (
+        "- Analysts: market, sentiment, news, fundamentals; research debate rounds 1, risk debate rounds 1"
+        in header
+    )
     assert "- Data vendors: core_stock_apis yfinance" in header
     assert "- Memory log:" not in header
     # Stage files keep the agent's own text; the market analyst's own heading is demoted in the complete report.
-    assert (report_dir / "1_analysts" / "market.md").read_text(encoding="utf-8").startswith("**Current Price**")
+    assert (
+        (report_dir / "1_analysts" / "market.md")
+        .read_text(encoding="utf-8")
+        .startswith("**Current Price**")
+    )
     assert "#### Market view" in complete
-    assert (report_dir / "2_research" / "bull.md").read_text(encoding="utf-8") == "\nBull Analyst: bull argument, turn 1."
-    assert (report_dir / "5_portfolio" / "decision.md").read_text(encoding="utf-8").startswith("**Rating**: Overweight")
+    assert (report_dir / "2_research" / "bull.md").read_text(
+        encoding="utf-8"
+    ) == "\nBull Analyst: bull argument, turn 1."
+    assert (
+        (report_dir / "5_portfolio" / "decision.md")
+        .read_text(encoding="utf-8")
+        .startswith("**Rating**: Overweight")
+    )
     assert "NVDA" in (report_dir / "complete_report.html").read_text(encoding="utf-8")
 
     # The state log, as the source's _log_state wrote it.
     log = json.loads(
-        (Path(isolated_config["results_dir"]) / "NVDA" / "TradingAgentsStrategy_logs"
-         / f"full_states_log_{TRADE_DATE}.json").read_text(encoding="utf-8"))
+        (
+            Path(isolated_config["results_dir"])
+            / "NVDA"
+            / "TradingAgentsStrategy_logs"
+            / f"full_states_log_{TRADE_DATE}.json"
+        ).read_text(encoding="utf-8")
+    )
     assert log["final_rating"] == "Overweight" and log["trade_date"] == TRADE_DATE
     assert log["run_settings"]["deep_think_llm"] == "gpt-6-sol"
-    assert set(log["investment_debate_state"]) == {"bull_history", "bear_history", "history", "current_response"}
+    assert set(log["investment_debate_state"]) == {
+        "bull_history",
+        "bear_history",
+        "history",
+        "current_response",
+    }
 
     # The decision is recorded for the next run's reflection.
     (entry,) = TradingMemoryLog(isolated_config).load_entries()
     assert (entry["date"], entry["ticker"], entry["rating"], entry["pending"]) == (
-        TRADE_DATE, "NVDA", "Overweight", True)
+        TRADE_DATE,
+        "NVDA",
+        "Overweight",
+        True,
+    )
 
 
 @pytest.mark.unit
 def test_finish_can_skip_the_html_page_and_is_repeatable(capsys, tmp_path, isolated_config):
     run_dir, _ = run_everything(capsys, tmp_path, "--analysts", "market,news", "--depth", "2")
-    code, out, err = ta(capsys, "run", "finish", "--run", str(run_dir), "--reports-dir", str(tmp_path / "r"),
-                        "--no-html")
+    code, out, err = ta(
+        capsys,
+        "run",
+        "finish",
+        "--run",
+        str(run_dir),
+        "--reports-dir",
+        str(tmp_path / "r"),
+        "--no-html",
+    )
     assert code == 0, err
     report_dir = Path(json.loads(out)["report_dir"])
     assert not (report_dir / "complete_report.html").exists()
@@ -156,7 +227,10 @@ def test_finish_can_skip_the_html_page_and_is_repeatable(capsys, tmp_path, isola
     assert complete.count("Bull Analyst: bull argument") == 2
     assert not (report_dir / "1_analysts" / "sentiment.md").exists()
     # Running finish again writes another report but records the decision once.
-    assert ta(capsys, "run", "finish", "--run", str(run_dir), "--reports-dir", str(tmp_path / "r"))[0] == 0
+    assert (
+        ta(capsys, "run", "finish", "--run", str(run_dir), "--reports-dir", str(tmp_path / "r"))[0]
+        == 0
+    )
     assert len(TradingMemoryLog(isolated_config).load_entries()) == 1
 
 
@@ -169,7 +243,9 @@ def test_finish_before_the_run_is_done_is_an_error(capsys):
 
 
 @pytest.mark.unit
-def test_a_portfolio_decision_without_a_price_target_exits_two_and_the_run_does_not_advance(capsys, tmp_path):
+def test_a_portfolio_decision_without_a_price_target_exits_two_and_the_run_does_not_advance(
+    capsys, tmp_path
+):
     code, out, err = ta(capsys, "run", "init", "--ticker", "NVDA", "--date", TRADE_DATE)
     second = out.strip()
     # fast-forward to the portfolio manager
@@ -179,16 +255,22 @@ def test_a_portfolio_decision_without_a_price_target_exits_two_and_the_run_does_
             ext, content = canned(role)
             draft = tmp_path / f"x_{role}.{ext}"
             draft.write_text(content, encoding="utf-8")
-            args = ["run", "submit", role, "--run", second] + ([] if role == "memory" else ["--file", str(draft)])
+            args = ["run", "submit", role, "--run", second] + (
+                [] if role == "memory" else ["--file", str(draft)]
+            )
             assert ta(capsys, *args)[0] == 0
 
     bad = tmp_path / "pm.json"
     bad.write_text(json.dumps({**PM, "price_target": None}), encoding="utf-8")
-    code, out, err = ta(capsys, "run", "submit", "portfolio_manager", "--run", second, "--file", str(bad))
+    code, out, err = ta(
+        capsys, "run", "submit", "portfolio_manager", "--run", second, "--file", str(bad)
+    )
     assert code == 2 and out == ""
     assert "Price Target" in err
     assert json.loads(ta(capsys, "run", "next", "--run", second)[1]) == {
-        "phase": "portfolio_manager", "roles": ["portfolio_manager"]}
+        "phase": "portfolio_manager",
+        "roles": ["portfolio_manager"],
+    }
     assert ta(capsys, "run", "finish", "--run", second)[0] == 1
 
 
@@ -204,10 +286,22 @@ def test_errors_go_to_stderr_with_a_non_zero_status(capsys, tmp_path):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("argv", [
-    [], ["run"], ["run", "init"], ["run", "next"], ["run", "prompt"], ["run", "submit"], ["run", "finish"],
-    ["tool"], ["memory"], ["memory", "due"], ["memory", "resolve"],
-])
+@pytest.mark.parametrize(
+    "argv",
+    [
+        [],
+        ["run"],
+        ["run", "init"],
+        ["run", "next"],
+        ["run", "prompt"],
+        ["run", "submit"],
+        ["run", "finish"],
+        ["tool"],
+        ["memory"],
+        ["memory", "due"],
+        ["memory", "resolve"],
+    ],
+)
 def test_missing_arguments_are_a_usage_error(argv, capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(argv)
@@ -215,11 +309,22 @@ def test_missing_arguments_are_a_usage_error(argv, capsys):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("argv", [
-    ["--help"], ["run", "--help"], ["run", "init", "--help"], ["run", "next", "--help"],
-    ["run", "prompt", "--help"], ["run", "submit", "--help"], ["run", "finish", "--help"],
-    ["tool", "--help"], ["memory", "--help"], ["memory", "due", "--help"], ["memory", "resolve", "--help"],
-])
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--help"],
+        ["run", "--help"],
+        ["run", "init", "--help"],
+        ["run", "next", "--help"],
+        ["run", "prompt", "--help"],
+        ["run", "submit", "--help"],
+        ["run", "finish", "--help"],
+        ["tool", "--help"],
+        ["memory", "--help"],
+        ["memory", "due", "--help"],
+        ["memory", "resolve", "--help"],
+    ],
+)
 def test_every_command_has_help(argv, capsys):
     with pytest.raises(SystemExit) as exc:
         cli.main(argv)

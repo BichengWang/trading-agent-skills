@@ -17,8 +17,15 @@ GOLDEN = json.loads((Path(__file__).parent / "golden_prompts.json").read_text(en
 
 ANALYST_ROLES = ("market", "news", "fundamentals")
 TEXT_ROLES = (
-    "sentiment", "bull", "bear", "aggressive", "conservative", "neutral", "trader",
-    "research_manager", "portfolio_manager",
+    "sentiment",
+    "bull",
+    "bear",
+    "aggressive",
+    "conservative",
+    "neutral",
+    "trader",
+    "research_manager",
+    "portfolio_manager",
 )
 
 
@@ -55,7 +62,9 @@ def scenario(request, tmp_path):
 
 
 def _parts(role, state, run_dir):
-    system, human = prompts.render_skill(run.ROLE_SKILL[role], run.prompt_values(role, state, run_dir))
+    system, human = prompts.render_skill(
+        run.ROLE_SKILL[role], run.prompt_values(role, state, run_dir)
+    )
     return [system] if human is None else [system, human]
 
 
@@ -87,4 +96,6 @@ def test_structured_roles_end_with_generated_json_section(scenario, role):
     if part == "human":
         assert text == prompts.join_parts(golden[0], golden[1] + "\n\n" + section)
     else:
-        assert text == prompts.join_parts(golden[0] + "\n\n" + section, golden[1] if len(golden) > 1 else None)
+        assert text == prompts.join_parts(
+            golden[0] + "\n\n" + section, golden[1] if len(golden) > 1 else None
+        )

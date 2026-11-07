@@ -128,9 +128,7 @@ class TestYFinanceWindowWiring:
         for name, spec in reg.INDICATORS.items():
             if spec.custom is not None:
                 continue
-            out = y_finance.get_stock_stats_indicators_window(
-                "AAPL", name, "2026-06-04", 5
-            )
+            out = y_finance.get_stock_stats_indicators_window("AAPL", name, "2026-06-04", 5)
             assert f"## {name} values" in out
             assert spec.description in out
 
@@ -141,9 +139,7 @@ class TestYFinanceWindowWiring:
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
         for name in ("td_9", "z_score"):
-            out = y_finance.get_stock_stats_indicators_window(
-                "AAPL", name, "2026-06-04", 30
-            )
+            out = y_finance.get_stock_stats_indicators_window("AAPL", name, "2026-06-04", 30)
             assert "Tier 1" in out and "Weekly" in out
 
 

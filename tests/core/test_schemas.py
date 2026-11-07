@@ -159,27 +159,9 @@ class TestRenderResearchPlan:
 # ---------------------------------------------------------------------------
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 # ---------------------------------------------------------------------------
 # Research Manager agent: structured happy path + fallback
 # ---------------------------------------------------------------------------
-
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -222,39 +204,52 @@ class TestRenderSentimentReport:
     def test_all_six_bands_render(self):
         for band in SentimentBand:
             report = SentimentReport(
-                overall_band=band, overall_score=5.0,
-                confidence="medium", narrative="n",
+                overall_band=band,
+                overall_score=5.0,
+                confidence="medium",
+                narrative="n",
             )
             assert band.value in render_sentiment_report(report)
 
     def test_score_out_of_range_rejected(self):
         with pytest.raises(ValidationError):
             SentimentReport(
-                overall_band=SentimentBand.BULLISH, overall_score=11.0,
-                confidence="high", narrative="n",
+                overall_band=SentimentBand.BULLISH,
+                overall_score=11.0,
+                confidence="high",
+                narrative="n",
             )
 
 
-
-
-
-
-
-
 @pytest.mark.unit
-@pytest.mark.parametrize("source", [
-    pytest.param(lambda: ResearchPlan.model_fields["recommendation"].description, id="ResearchPlan.recommendation"),
-    pytest.param(lambda: PortfolioDecision.model_fields["rating"].description, id="PortfolioDecision.rating"),
-    pytest.param(lambda: prompts.load_template("research-manager"), id="research_manager prompt"),
-    pytest.param(lambda: prompts.load_template("portfolio-manager"), id="portfolio_manager prompt"),
-])
+@pytest.mark.parametrize(
+    "source",
+    [
+        pytest.param(
+            lambda: ResearchPlan.model_fields["recommendation"].description,
+            id="ResearchPlan.recommendation",
+        ),
+        pytest.param(
+            lambda: PortfolioDecision.model_fields["rating"].description,
+            id="PortfolioDecision.rating",
+        ),
+        pytest.param(
+            lambda: prompts.load_template("research-manager"), id="research_manager prompt"
+        ),
+        pytest.param(
+            lambda: prompts.load_template("portfolio-manager"), id="portfolio_manager prompt"
+        ),
+    ],
+)
 def test_conflict_alone_is_not_a_hold_trigger(source):
     # The debate always contains conflicting arguments, so a Hold condition that
     # conflict satisfies fires on every run and swallows directional calls
     # (#1321). All four decision sites must state the same rule.
     text = " ".join(source().split())
-    assert "conflict alone is not a reason to Hold" in text or \
-        "Conflicting arguments alone are not a reason to Hold" in text
+    assert (
+        "conflict alone is not a reason to Hold" in text
+        or "Conflicting arguments alone are not a reason to Hold" in text
+    )
     assert "materially conflicting" not in text
 
 
@@ -266,8 +261,12 @@ def test_a_price_written_as_a_range_drops_only_that_field(written):
     losing every other field the model got right."""
     from ta_skills.schemas import PortfolioDecision, PortfolioRating
 
-    decision = PortfolioDecision(rating=PortfolioRating.BUY, executive_summary="s",
-                                 investment_thesis="t", price_target=written)
+    decision = PortfolioDecision(
+        rating=PortfolioRating.BUY,
+        executive_summary="s",
+        investment_thesis="t",
+        price_target=written,
+    )
     assert decision.price_target is None
 
 
@@ -275,8 +274,12 @@ def test_a_price_written_as_a_range_drops_only_that_field(written):
 def test_a_price_that_is_a_number_survives():
     from ta_skills.schemas import PortfolioDecision, PortfolioRating
 
-    decision = PortfolioDecision(rating=PortfolioRating.BUY, executive_summary="s",
-                                 investment_thesis="t", price_target="$1,150.25")
+    decision = PortfolioDecision(
+        rating=PortfolioRating.BUY,
+        executive_summary="s",
+        investment_thesis="t",
+        price_target="$1,150.25",
+    )
     assert decision.price_target == 1150.25
 
 
@@ -285,8 +288,9 @@ def test_a_field_the_model_did_not_give_says_so():
     """An omitted line and a line never asked for read the same to an analyst."""
     from ta_skills.schemas import PortfolioDecision, PortfolioRating
 
-    rendered = render_pm_decision(PortfolioDecision(
-        rating=PortfolioRating.HOLD, executive_summary="s", investment_thesis="t"))
+    rendered = render_pm_decision(
+        PortfolioDecision(rating=PortfolioRating.HOLD, executive_summary="s", investment_thesis="t")
+    )
     assert "Price Target" in rendered and "not provided" in rendered.lower()
 
 
@@ -301,17 +305,53 @@ def test_the_trader_names_the_levels_it_did_not_give():
 
 
 _NARRATIVE_CASES = [
-    (ResearchPlan, {"recommendation": "Hold", "rationale": "Balanced evidence.",
-                    "strategic_actions": "Retain current position."}, "rationale"),
-    (ResearchPlan, {"recommendation": "Hold", "rationale": "Balanced evidence.",
-                    "strategic_actions": "Retain current position."}, "strategic_actions"),
+    (
+        ResearchPlan,
+        {
+            "recommendation": "Hold",
+            "rationale": "Balanced evidence.",
+            "strategic_actions": "Retain current position.",
+        },
+        "rationale",
+    ),
+    (
+        ResearchPlan,
+        {
+            "recommendation": "Hold",
+            "rationale": "Balanced evidence.",
+            "strategic_actions": "Retain current position.",
+        },
+        "strategic_actions",
+    ),
     (TraderProposal, {"action": "Hold", "reasoning": "Balanced evidence."}, "reasoning"),
-    (PortfolioDecision, {"rating": "Hold", "executive_summary": "Retain current position.",
-                         "investment_thesis": "Balanced evidence."}, "executive_summary"),
-    (PortfolioDecision, {"rating": "Hold", "executive_summary": "Retain current position.",
-                         "investment_thesis": "Balanced evidence."}, "investment_thesis"),
-    (SentimentReport, {"overall_band": "Neutral", "overall_score": 5.0, "confidence": "low",
-                       "narrative": "No social posts are available for this window."}, "narrative"),
+    (
+        PortfolioDecision,
+        {
+            "rating": "Hold",
+            "executive_summary": "Retain current position.",
+            "investment_thesis": "Balanced evidence.",
+        },
+        "executive_summary",
+    ),
+    (
+        PortfolioDecision,
+        {
+            "rating": "Hold",
+            "executive_summary": "Retain current position.",
+            "investment_thesis": "Balanced evidence.",
+        },
+        "investment_thesis",
+    ),
+    (
+        SentimentReport,
+        {
+            "overall_band": "Neutral",
+            "overall_score": 5.0,
+            "confidence": "low",
+            "narrative": "No social posts are available for this window.",
+        },
+        "narrative",
+    ),
 ]
 
 
@@ -334,18 +374,29 @@ def test_required_narrative_preserves_an_explanation_of_missing_data(schema, fie
     assert schema.model_json_schema()["properties"][field]["minLength"] == 1
 
 
-
-
 @pytest.mark.unit
-@pytest.mark.parametrize("schema, fields, price_fields", [
-    (TraderProposal, {"action": "Buy", "reasoning": "Supported by supplied evidence."},
-     ("entry_price", "stop_loss")),
-    (PortfolioDecision, {"rating": "Buy", "executive_summary": "Build a small position.",
-                         "investment_thesis": "Supported by supplied evidence."},
-     ("price_target", "current_price")),
-])
-@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), float("-inf"),
-                                     "NaN", "Infinity", 0, -1, True, {}, []])
+@pytest.mark.parametrize(
+    "schema, fields, price_fields",
+    [
+        (
+            TraderProposal,
+            {"action": "Buy", "reasoning": "Supported by supplied evidence."},
+            ("entry_price", "stop_loss"),
+        ),
+        (
+            PortfolioDecision,
+            {
+                "rating": "Buy",
+                "executive_summary": "Build a small position.",
+                "investment_thesis": "Supported by supplied evidence.",
+            },
+            ("price_target", "current_price"),
+        ),
+    ],
+)
+@pytest.mark.parametrize(
+    "invalid", [float("nan"), float("inf"), float("-inf"), "NaN", "Infinity", 0, -1, True, {}, []]
+)
 def test_invalid_absolute_prices_drop_only_the_price_fields(schema, fields, price_fields, invalid):
     parsed = schema.model_validate({**fields, **dict.fromkeys(price_fields, invalid)})
     assert all(getattr(parsed, field) is None for field in price_fields)
@@ -355,20 +406,45 @@ def test_invalid_absolute_prices_drop_only_the_price_fields(schema, fields, pric
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("written, expected", [(" HIGH ", "high"), ("Medium", "medium"),
-                                                ("low", "low"), ("N/A", None), ("", None),
-                                                ("very confident", None), (None, None)])
+@pytest.mark.parametrize(
+    "written, expected",
+    [
+        (" HIGH ", "high"),
+        ("Medium", "medium"),
+        ("low", "low"),
+        ("N/A", None),
+        ("", None),
+        ("very confident", None),
+        (None, None),
+    ],
+)
 def test_optional_pm_confidence_does_not_discard_the_decision(written, expected):
-    decision = PortfolioDecision(rating="Hold", executive_summary="Retain the position.",
-                                 investment_thesis="Balanced evidence.", confidence=written)
+    decision = PortfolioDecision(
+        rating="Hold",
+        executive_summary="Retain the position.",
+        investment_thesis="Balanced evidence.",
+        confidence=written,
+    )
     assert decision.confidence == expected
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("written, expected", [(" 3-6 months ", "3-6 months"), ("N/A", None),
-                                                ("unknown", None), ("not provided", None),
-                                                (" \n", None), (None, None)])
+@pytest.mark.parametrize(
+    "written, expected",
+    [
+        (" 3-6 months ", "3-6 months"),
+        ("N/A", None),
+        ("unknown", None),
+        ("not provided", None),
+        (" \n", None),
+        (None, None),
+    ],
+)
 def test_optional_pm_horizon_distinguishes_missing_data(written, expected):
-    decision = PortfolioDecision(rating="Hold", executive_summary="Retain the position.",
-                                 investment_thesis="Balanced evidence.", time_horizon=written)
+    decision = PortfolioDecision(
+        rating="Hold",
+        executive_summary="Retain the position.",
+        investment_thesis="Balanced evidence.",
+        time_horizon=written,
+    )
     assert decision.time_horizon == expected

@@ -61,8 +61,11 @@ def build_sentiment_inputs(ticker: str, trade_date: str) -> dict:
     if isinstance(include_reddit, str):
         include_reddit = include_reddit.strip().lower() not in {"0", "false", "no", "off"}
     reddit_block = (
-        fetch_reddit_posts(ticker, subreddits, start_date=start_date, end_date=end_date, screen=screen)
-        if include_reddit else "<reddit skipped: disabled by sentiment_include_reddit config>"
+        fetch_reddit_posts(
+            ticker, subreddits, start_date=start_date, end_date=end_date, screen=screen
+        )
+        if include_reddit
+        else "<reddit skipped: disabled by sentiment_include_reddit config>"
     )
 
     return {

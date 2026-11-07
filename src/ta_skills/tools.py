@@ -93,7 +93,9 @@ def get_indicators(ticker, trade_date, indicator, curr_date, look_back_days=30):
     results = []
     for ind in indicators:
         try:
-            results.append(route_to_vendor("get_indicators", ticker, ind, curr_date, look_back_days))
+            results.append(
+                route_to_vendor("get_indicators", ticker, ind, curr_date, look_back_days)
+            )
         except ValueError as e:
             results.append(str(e))
     return "\n\n".join(results)
@@ -235,7 +237,9 @@ def get_macro_indicators(ticker, trade_date, indicator, curr_date, look_back_day
     Returns:
         str: A formatted markdown report of the macro series
     """
-    return route_to_vendor("get_macro_indicators", indicator, as_of(curr_date, trade_date), look_back_days)
+    return route_to_vendor(
+        "get_macro_indicators", indicator, as_of(curr_date, trade_date), look_back_days
+    )
 
 
 def get_prediction_markets(ticker, trade_date, topic, limit=None):
@@ -266,13 +270,17 @@ _PARAMS: dict[str, tuple[Param, ...]] = {
     "get_stock_data": (_START, _END),
     "get_indicators": (
         Param("indicator", str, REQUIRED, "technical indicator to get the analysis and report of"),
-        Param("curr_date", str, REQUIRED, "The current trading date you are trading on, YYYY-mm-dd"),
+        Param(
+            "curr_date", str, REQUIRED, "The current trading date you are trading on, YYYY-mm-dd"
+        ),
         Param("look_back_days", int, 30, "how many days to look back"),
     ),
     "get_verified_market_snapshot": (
         Param("curr_date", str, REQUIRED, "the current trading date, YYYY-mm-dd"),
         Param(
-            "look_back_days", int, 30,
+            "look_back_days",
+            int,
+            30,
             "number of recent trading rows to include for sanity-checking",
         ),
     ),
@@ -291,7 +299,9 @@ _PARAMS: dict[str, tuple[Param, ...]] = {
     "get_insider_transactions": (),
     "get_macro_indicators": (
         Param(
-            "indicator", str, REQUIRED,
+            "indicator",
+            str,
+            REQUIRED,
             "Macro indicator: a friendly alias such as 'cpi', 'core_pce', "
             "'unemployment', 'fed_funds_rate', '10y_treasury', 'yield_curve', "
             "'real_gdp', 'vix', euro-area aliases such as 'ecb_deposit_rate', "
@@ -299,17 +309,23 @@ _PARAMS: dict[str, tuple[Param, ...]] = {
             "'france_10y', 'eur_usd', or a raw FRED series ID such as 'CPIAUCSL'.",
         ),
         Param(
-            "curr_date", str, REQUIRED,
+            "curr_date",
+            str,
+            REQUIRED,
             "Current date in yyyy-mm-dd format; the end of the window",
         ),
         Param(
-            "look_back_days", int, None,
+            "look_back_days",
+            int,
+            None,
             "Trailing window length in days; omit for a 1-year window",
         ),
     ),
     "get_prediction_markets": (
         Param(
-            "topic", str, REQUIRED,
+            "topic",
+            str,
+            REQUIRED,
             "Event topic/keyword, e.g. 'Fed rate cut', 'recession 2026', "
             "'US election', or a sector/company event.",
         ),
@@ -318,9 +334,18 @@ _PARAMS: dict[str, tuple[Param, ...]] = {
 }
 
 _FUNCS = (
-    get_stock_data, get_indicators, get_verified_market_snapshot, get_fundamentals,
-    get_balance_sheet, get_cashflow, get_income_statement, get_news, get_global_news,
-    get_insider_transactions, get_macro_indicators, get_prediction_markets,
+    get_stock_data,
+    get_indicators,
+    get_verified_market_snapshot,
+    get_fundamentals,
+    get_balance_sheet,
+    get_cashflow,
+    get_income_statement,
+    get_news,
+    get_global_news,
+    get_insider_transactions,
+    get_macro_indicators,
+    get_prediction_markets,
 )
 
 TOOLS: dict[str, ToolSpec] = {

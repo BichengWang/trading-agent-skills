@@ -55,7 +55,9 @@ class ResolveInstrumentIdentityTests(unittest.TestCase):
         # A long process (a backtest) must not run every later cell without an
         # identity because one request failed.
         with patch("ta_skills.data.vendors.yahoo.market.yf.Ticker") as mock:
-            type(mock.return_value).info = property(lambda self: (_ for _ in ()).throw(TimeoutError()))
+            type(mock.return_value).info = property(
+                lambda self: (_ for _ in ()).throw(TimeoutError())
+            )
             self.assertIsNone(resolve_instrument_identity("TOTDY"))
             type(mock.return_value).info = {"longName": "TOTO LTD."}
             self.assertEqual(resolve_instrument_identity("TOTDY")["company_name"], "TOTO LTD.")
@@ -80,35 +82,41 @@ def test_run_context_arguments_do_not_change_the_lookup():
 
 
 # --- #982: stablecoin-quoted crypto normalizes to Yahoo's -USD pair ---
-@pytest.mark.parametrize("raw,expected", [
-    ("BTCUSD", "BTC-USD"),
-    ("BTCUSDT", "BTC-USD"),
-    ("BTC-USDT", "BTC-USD"),
-    ("BTC-USDC", "BTC-USD"),
-    ("ethusdt", "ETH-USD"),
-    # non-crypto must be untouched
-    ("AAPL", "AAPL"),
-    ("GC=F", "GC=F"),
-    ("600519.SS", "600519.SS"),
-    ("EURUSD", "EURUSD=X"),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("BTCUSD", "BTC-USD"),
+        ("BTCUSDT", "BTC-USD"),
+        ("BTC-USDT", "BTC-USD"),
+        ("BTC-USDC", "BTC-USD"),
+        ("ethusdt", "ETH-USD"),
+        # non-crypto must be untouched
+        ("AAPL", "AAPL"),
+        ("GC=F", "GC=F"),
+        ("600519.SS", "600519.SS"),
+        ("EURUSD", "EURUSD=X"),
+    ],
+)
 def test_normalize_symbol_crypto_and_passthrough(raw, expected):
     assert normalize_symbol(raw) == expected
 
 
 # --- #981/#982: asset-type classified on the canonical symbol ---
-@pytest.mark.parametrize("raw,expected", [
-    ("BTCUSD", "crypto"),
-    ("BTC-USDT", "crypto"),
-    ("BTC-USD", "crypto"),
-    ("ETHUSD", "crypto"),
-    ("AAPL", "stock"),
-    ("GC=F", "stock"),
-    ("XAUUSD", "stock"),
-    ("600519.SS", "stock"),
-    ("SPY", "stock"),
-    ("^GSPC", "stock"),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("BTCUSD", "crypto"),
+        ("BTC-USDT", "crypto"),
+        ("BTC-USD", "crypto"),
+        ("ETHUSD", "crypto"),
+        ("AAPL", "stock"),
+        ("GC=F", "stock"),
+        ("XAUUSD", "stock"),
+        ("600519.SS", "stock"),
+        ("SPY", "stock"),
+        ("^GSPC", "stock"),
+    ],
+)
 def test_detect_asset_type(raw, expected):
     assert detect_asset_type(raw) == expected
 

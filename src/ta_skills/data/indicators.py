@@ -96,8 +96,7 @@ def format_td_setup_block(counts: dict) -> str:
         ("Tier 3", "Daily", counts.get("daily", 0)),
     ]
     lines = [
-        "## TD-9 (TD Sequential Setup) — current running count by timeframe "
-        "(higher tier wins):"
+        "## TD-9 (TD Sequential Setup) — current running count by timeframe (higher tier wins):"
     ]
     for tier, name, n in tiers:
         lines.append(f"- {tier} {name}: {n:+d}  {_td_phrase(n)}")
@@ -121,9 +120,7 @@ def compute_zscore(close: "pd.Series", window: int = 20) -> "pd.Series":
     return pd.Series(z.fillna(0.0).to_numpy(), index=pd.Series(close).index)
 
 
-def zscore_by_timeframe(
-    data: "pd.DataFrame", curr_date: str = None, window: int = 20
-) -> dict:
+def zscore_by_timeframe(data: "pd.DataFrame", curr_date: str = None, window: int = 20) -> dict:
     """Current close z-score on weekly / monthly / daily bars.
 
     Weekly and monthly are resampled (last close per period) from the same daily
@@ -206,9 +203,7 @@ def _resample_ohlcv(df: "pd.DataFrame", rule: str) -> "pd.DataFrame":
     return agg.dropna(subset=["Close"])
 
 
-def supertrend_by_timeframe(
-    data: "pd.DataFrame", curr_date: str = None, window: int = 14
-) -> dict:
+def supertrend_by_timeframe(data: "pd.DataFrame", curr_date: str = None, window: int = 14) -> dict:
     """Current SuperTrend state on weekly / monthly / daily bars.
 
     stockstats computes the SuperTrend line itself (``window``-period ATR,
@@ -249,9 +244,7 @@ def supertrend_by_timeframe(
     if df.empty:
         return {"weekly": None, "monthly": None, "daily": None}
 
-    daily = df.set_index(pd.DatetimeIndex(df["Date"]))[
-        ["Open", "High", "Low", "Close", "Volume"]
-    ]
+    daily = df.set_index(pd.DatetimeIndex(df["Date"]))[["Open", "High", "Low", "Close", "Volume"]]
     return {
         "weekly": _last(_resample_ohlcv(daily, "W")),
         "monthly": _last(_resample_ohlcv(daily, "ME")),
@@ -285,9 +278,7 @@ def format_supertrend_block(snapshots: dict, window: int = 14) -> str:
 def get_stock_stats_indicators_window(
     symbol: Annotated[str, "ticker symbol of the company"],
     indicator: Annotated[str, "technical indicator to get the analysis and report of"],
-    as_of_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
-    ],
+    as_of_date: Annotated[str, "The current trading date you are trading on, YYYY-mm-dd"],
     look_back_days: Annotated[int, "how many days to look back"],
 ) -> str:
 
@@ -305,11 +296,7 @@ def get_stock_stats_indicators_window(
         zscores = zscore_by_timeframe(
             load_ohlcv(symbol, as_of_date), as_of_date, window=params["window"]
         )
-        return (
-            format_zscore_block(zscores, window=params["window"])
-            + "\n\n"
-            + spec.description
-        )
+        return format_zscore_block(zscores, window=params["window"]) + "\n\n" + spec.description
 
     # SuperTrend resamples OHLCV to weekly/monthly bars itself, so it also
     # returns a tiered block rather than a windowed daily listing.
@@ -318,9 +305,7 @@ def get_stock_stats_indicators_window(
             load_ohlcv(symbol, as_of_date), as_of_date, window=params["window"]
         )
         return (
-            format_supertrend_block(snapshots, window=params["window"])
-            + "\n\n"
-            + spec.description
+            format_supertrend_block(snapshots, window=params["window"]) + "\n\n" + spec.description
         )
 
     end_date = as_of_date
@@ -334,8 +319,7 @@ def get_stock_stats_indicators_window(
             # like any daily series, so it renders through the same window.
             obv = compute_obv(load_ohlcv(symbol, as_of_date))
             indicator_data = {
-                date.strftime("%Y-%m-%d"): str(float(value))
-                for date, value in obv.items()
+                date.strftime("%Y-%m-%d"): str(float(value)) for date, value in obv.items()
             }
         else:
             indicator_data = _get_stock_stats_bulk(symbol, indicator, as_of_date)
@@ -345,7 +329,7 @@ def get_stock_stats_indicators_window(
         date_values = []
 
         while current_dt >= before:
-            date_str = current_dt.strftime('%Y-%m-%d')
+            date_str = current_dt.strftime("%Y-%m-%d")
 
             # Look up the indicator value for this date
             if date_str in indicator_data:
@@ -394,7 +378,7 @@ def get_stock_stats_indicators_window(
 def _get_stock_stats_bulk(
     symbol: Annotated[str, "ticker symbol of the company"],
     indicator: Annotated[str, "technical indicator to calculate"],
-    as_of_date: Annotated[str, "current date for reference"]
+    as_of_date: Annotated[str, "current date for reference"],
 ) -> dict:
     """
     Optimized bulk calculation of stock stats indicators.
@@ -431,9 +415,7 @@ def _get_stock_stats_bulk(
 def get_stockstats_indicator(
     symbol: Annotated[str, "ticker symbol of the company"],
     indicator: Annotated[str, "technical indicator to get the analysis and report of"],
-    as_of_date: Annotated[
-        str, "The current trading date you are trading on, YYYY-mm-dd"
-    ],
+    as_of_date: Annotated[str, "The current trading date you are trading on, YYYY-mm-dd"],
 ) -> str:
 
     as_of_dt = datetime.strptime(as_of_date, "%Y-%m-%d")
@@ -468,9 +450,7 @@ def get_stock_stats(
     indicator: Annotated[
         str, "quantitative indicators based off of the stock data for the company"
     ],
-    as_of_date: Annotated[
-        str, "curr date for retrieving stock price data, YYYY-mm-dd"
-    ],
+    as_of_date: Annotated[str, "curr date for retrieving stock price data, YYYY-mm-dd"],
 ):
     data = load_ohlcv(symbol, as_of_date)
     df = wrap(data)

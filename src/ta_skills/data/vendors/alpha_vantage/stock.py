@@ -6,11 +6,7 @@ from ta_skills.data.vendors.alpha_vantage.common import (
 )
 
 
-def get_stock(
-    symbol: str,
-    start_date: str,
-    end_date: str
-) -> str:
+def get_stock(symbol: str, start_date: str, end_date: str) -> str:
     """
     Returns raw daily OHLCV values, adjusted close values, and historical split/dividend events
     filtered to the specified date range.

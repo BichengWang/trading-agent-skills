@@ -116,8 +116,7 @@ def test_run_workflow_can_allow_incomplete_target_date(monkeypatch):
         workflow,
         "validate_homepage",
         lambda date, selected, **kwargs: calls.append(
-            "validated:"
-            + ",".join(f"{ticker}/{model}" for ticker, model in sorted(selected))
+            "validated:" + ",".join(f"{ticker}/{model}" for ticker, model in sorted(selected))
         ),
     )
 
@@ -185,7 +184,9 @@ def test_strip_run_trailing_whitespace_cleans_report_and_stage_files(tmp_path, m
 
     assert workflow.strip_run_trailing_whitespace(run) == 2
     assert (run_dir / "complete_report.md").read_text(encoding="utf-8") == "report line\n"
-    assert (run_dir / "1_analysts" / "market.md").read_text(encoding="utf-8") == "stage line\nkeep\n"
+    assert (run_dir / "1_analysts" / "market.md").read_text(
+        encoding="utf-8"
+    ) == "stage line\nkeep\n"
 
 
 @pytest.mark.unit
@@ -321,23 +322,45 @@ def test_homepage_validation_can_allow_summary_na(tmp_path, monkeypatch):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("column,value,allow_missing", [
-    (2, "No action stated / Buy", True), (2, "Buy / Not rated", True),
-    (2, "n/a  / Overweight", True),
-    (3, "No verified close", True), (4, "No target set", False), (5, "No target set", True),
-    (6, "No numeric horizon", True), (7, "Not assessed", True), (8, "Not specified", True),
-    (3, "", True), (4, "$0.00", False), (5, "NaN%", False), (6, "+Inf%", False),
-    (9, "Extra column", False),
-])
-def test_explicit_missing_labels_cannot_bypass_strict_validation(tmp_path, monkeypatch, column, value, allow_missing):
+@pytest.mark.parametrize(
+    "column,value,allow_missing",
+    [
+        (2, "No action stated / Buy", True),
+        (2, "Buy / Not rated", True),
+        (2, "n/a  / Overweight", True),
+        (3, "No verified close", True),
+        (4, "No target set", False),
+        (5, "No target set", True),
+        (6, "No numeric horizon", True),
+        (7, "Not assessed", True),
+        (8, "Not specified", True),
+        (3, "", True),
+        (4, "$0.00", False),
+        (5, "NaN%", False),
+        (6, "+Inf%", False),
+        (9, "Extra column", False),
+    ],
+)
+def test_explicit_missing_labels_cannot_bypass_strict_validation(
+    tmp_path, monkeypatch, column, value, allow_missing
+):
     workflow = load_workflow()
     docs = tmp_path / "docs"
     run_dir = make_run(docs, "AAPL", "20260602_opus_20260602_101010")
     run = workflow.site.parse_run_folder(run_dir.parent, run_dir)
     assert run is not None
     monkeypatch.setattr(workflow, "DOCS", docs)
-    cells = [f"[AAPL](./AAPL/{run.folder_name}/complete_report.md)", "`opus`", "Buy / Overweight",
-             "$10.00", "$12.00", "+20.0%", "+40.0%", "High", "6m"]
+    cells = [
+        f"[AAPL](./AAPL/{run.folder_name}/complete_report.md)",
+        "`opus`",
+        "Buy / Overweight",
+        "$10.00",
+        "$12.00",
+        "+20.0%",
+        "+40.0%",
+        "High",
+        "6m",
+    ]
     if column == len(cells):
         cells.append(value)
     else:
@@ -375,7 +398,9 @@ def test_workflow_command_order_is_process_build_validate(monkeypatch):
     )
     monkeypatch.setattr(workflow, "require_full_coverage", lambda runs, selected, date: None)
     monkeypatch.setattr(workflow, "process_selected_runs", lambda selected: calls.append("process"))
-    monkeypatch.setattr(workflow, "build_reports_site", lambda date: calls.append("build_reports_site"))
+    monkeypatch.setattr(
+        workflow, "build_reports_site", lambda date: calls.append("build_reports_site")
+    )
     # Real `mkdocs build --strict` needs the derived per-ticker docs/<TICKER>/
     # index.md hubs, which don't exist in a fresh checkout (CI). This test only
     # cares about call order among the three workflow steps below, so stub it.

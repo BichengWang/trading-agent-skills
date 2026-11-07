@@ -50,9 +50,7 @@ class TestMfiRescale:
         expected = wrap(frame.copy())
         expected_last = float(expected["mfi"].iloc[-1]) * 100.0
 
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "mfi", "2026-06-04", 5
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "mfi", "2026-06-04", 5)
         reported = float(out.split("2026-06-04: ")[1].splitlines()[0])
         assert reported == pytest.approx(expected_last)
 
@@ -64,9 +62,7 @@ class TestMfiRescale:
         frame = _ohlcv([100 + i for i in range(60)])
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "mfi", "2026-06-04", 5
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "mfi", "2026-06-04", 5)
         reported = float(out.split("2026-06-04: ")[1].splitlines()[0])
         assert reported > 80  # overbought per the description's threshold
 
@@ -115,9 +111,7 @@ class TestAlphaVantageContract:
             cfg.setdefault("tool_vendors", {})["get_indicators"] = "alpha_vantage,yfinance"
             set_config(cfg)
 
-            out = interface.route_to_vendor(
-                "get_indicators", "AAPL", "vwma", "2026-06-04", 5
-            )
+            out = interface.route_to_vendor("get_indicators", "AAPL", "vwma", "2026-06-04", 5)
             assert "## vwma values" in out
         finally:
             set_config(saved)

@@ -6,6 +6,7 @@ H1, H2, or H3 inside that body must be demoted to H4 so it doesn't visually
 escape its wrapper section. H4+ stays put. Wrapper H2s and H3s are preserved.
 The transform must be idempotent and must not touch fenced code blocks.
 """
+
 from __future__ import annotations
 
 import re
@@ -16,21 +17,13 @@ import pytest
 @pytest.fixture(scope="module")
 def transform():
     from ta_skills.report_headings import transform as fn
+
     return fn
-
-
-
-
 
 
 def test_preserves_wrapper_headings(transform):
     text = (
-        "# Trading Analysis Report: ABC\n"
-        "\n"
-        "## I. Analyst Team Reports\n"
-        "\n"
-        "### Market Analyst\n"
-        "body\n"
+        "# Trading Analysis Report: ABC\n\n## I. Analyst Team Reports\n\n### Market Analyst\nbody\n"
     )
     out = transform(text)
     assert "# Trading Analysis Report: ABC\n" in out
@@ -61,12 +54,7 @@ def test_demotes_body_h3_to_h4(transform):
 
 
 def test_demotes_body_h1_h2(transform):
-    text = (
-        "### Market Analyst\n"
-        "# Stray H1\n"
-        "## Stray H2\n"
-        "body\n"
-    )
+    text = "### Market Analyst\n# Stray H1\n## Stray H2\nbody\n"
     out = transform(text)
     assert "#### Stray H1\n" in out
     assert "#### Stray H2\n" in out
@@ -82,12 +70,7 @@ def test_normalizes_individual_agent_text_without_a_wrapper(transform):
 
 
 def test_leaves_h4_h5_h6_alone(transform):
-    text = (
-        "### Market Analyst\n"
-        "#### Section\n"
-        "##### Subsection\n"
-        "###### Sub-subsection\n"
-    )
+    text = "### Market Analyst\n#### Section\n##### Subsection\n###### Sub-subsection\n"
     out = transform(text)
     assert "#### Section\n" in out
     assert "##### Subsection\n" in out
@@ -95,13 +78,7 @@ def test_leaves_h4_h5_h6_alone(transform):
 
 
 def test_idempotent(transform):
-    text = (
-        "## I. Analyst Team Reports\n"
-        "\n"
-        "### Market Analyst\n"
-        "### Trend\n"
-        "body\n"
-    )
+    text = "## I. Analyst Team Reports\n\n### Market Analyst\n### Trend\nbody\n"
     once = transform(text)
     twice = transform(once)
     assert once == twice
@@ -186,7 +163,6 @@ def test_real_world_vsh_pattern(transform):
         ln
         for ln in out.splitlines()
         if ln.startswith("### ")
-        and ln.strip("# ").strip()
-        not in {"Market Analyst", "Sentiment Analyst"}
+        and ln.strip("# ").strip() not in {"Market Analyst", "Sentiment Analyst"}
     ]
     assert body_h3 == [], f"Unexpected body H3s: {body_h3}"

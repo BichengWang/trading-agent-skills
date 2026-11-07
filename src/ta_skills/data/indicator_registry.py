@@ -484,9 +484,7 @@ def resolve_column(name: str, params: dict | None = None) -> str:
     """
     spec = get_spec(name)
     if spec.stockstats_column is None:
-        raise ValueError(
-            f"Indicator {name} is computed from OHLCV, not as a stockstats column."
-        )
+        raise ValueError(f"Indicator {name} is computed from OHLCV, not as a stockstats column.")
     if not spec.column_template or params is None or params == spec.default_params:
         return spec.stockstats_column
     return spec.column_template.format(**params)
