@@ -18,6 +18,7 @@ from ta_skills.rating import RATINGS_5_TIER
 
 MIN_COHORT = 5      # forecasts on a date before its cross-section is ranked
 MIN_GROUP = 30      # forecasts before a model or confidence level is reported on its own
+FLAT_MOVE = 1e-6    # |log(target / price)| below this is a target equal to the price
 BOOTSTRAP_REPS = 2000
 PERMUTATION_REPS = 500
 
@@ -188,6 +189,40 @@ def rating_section(d: pd.DataFrame, h: int, permutation_reps: int = PERMUTATION_
     }
 
 
+def shrunk_targets(q: pd.DataFrame, implied: pd.Series, realized: pd.Series,
+                   exit_col: str) -> dict | None:
+    """Targets with their implied move scaled by a factor learned only from earlier windows.
+
+    For each analysis date, the factor is the least-squares slope (through the origin,
+    clipped to 0..1) of realized on implied log moves over targets whose window had
+    closed by that date. Dates with fewer than MIN_GROUP such targets are not scored.
+    A positive skill means the targets point the right way once their size is corrected;
+    at a factor of 0 the shrunk target is the random walk.
+    """
+    if exit_col not in q:
+        return None
+    exits, dates = pd.to_datetime(q[exit_col]), pd.to_datetime(q["date"])
+    shrunk = pd.Series(np.nan, index=q.index)
+    factor = None
+    for date in sorted(dates.unique()):
+        known = exits <= date
+        if known.sum() < MIN_GROUP:
+            continue
+        x, y = implied[known], realized[known]
+        den = float((x * x).sum())
+        factor = min(1.0, max(0.0, float((x * y).sum()) / den)) if den else 0.0
+        shrunk[dates == date] = factor * implied[dates == date]
+    scored = shrunk.notna()
+    if not scored.any():
+        return None
+    walk = realized[scored].abs().mean()
+    return {
+        "n": int(scored.sum()), "latest_factor": _num(factor),
+        "target_skill": _num(1 - (realized - implied)[scored].abs().mean() / walk),
+        "shrunk_skill": _num(1 - (realized - shrunk)[scored].abs().mean() / walk),
+    }
+
+
 def target_section(d: pd.DataFrame, end: str) -> dict | None:
     """Price targets against the close at the declared horizon's start (min) or end (max)."""
     close = f"pt_close_{end}"
@@ -197,7 +232,8 @@ def target_section(d: pd.DataFrame, end: str) -> dict | None:
     if q.empty:
         return None
     implied, realized = np.log(q["price_target"] / q["p0"]), np.log(q[close] / q["p0"])
-    moving = implied.abs() > 1e-9
+    # Yahoo's float rounding (581.700012 for 581.70) must not give a flat target a direction.
+    moving = implied.abs() > FLAT_MOVE
     model_err, walk_err = np.log(q[close] / q["price_target"]).abs(), realized.abs()
     touch = q.get(f"pt_touch_{end}", pd.Series(dtype=object)).dropna()
     by_model = []
@@ -215,6 +251,7 @@ def target_section(d: pd.DataFrame, end: str) -> dict | None:
         if len(q) >= 3 and implied.var() > 0 else None,
         "touch_rate": _num(touch.astype(bool).mean()) if len(touch) else None,
         "by_model": sorted(by_model, key=lambda r: -r["n"]),
+        "walk_forward_shrunk": shrunk_targets(q, implied, realized, f"pt_exit_{end}"),
     }
 
 
@@ -327,9 +364,23 @@ def render_markdown(card: dict) -> str:
             f"{_f(s['mae_log_target'])} | {_f(s['mae_log_random_walk'])} | "
             f"{_pct(s['skill_vs_random_walk'])} | {_f(s['calibration_slope'], 2)} | "
             f"{_pct(s['touch_rate'], False)} |")
-    i = card["integrity"]
     lines += ["", "Errors are mean |log(close / target)|; skill = 1 − target error / random-walk "
-              "error (above 0 beats \"no change\").", "", "## Integrity", "",
+              "error (above 0 beats \"no change\")."]
+    shrunk = {k: s["walk_forward_shrunk"] for k, s in card["targets"].items()
+              if s.get("walk_forward_shrunk")}
+    if shrunk:
+        lines += ["", "| at | n | latest factor | target skill | shrunk-target skill |",
+                  "|---|---|---|---|---|"]
+        lines += [f"| {k.replace('_', ' ')} | {w['n']} | {_f(w['latest_factor'], 2)} | "
+                  f"{_pct(w['target_skill'])} | {_pct(w['shrunk_skill'])} |"
+                  for k, w in shrunk.items()]
+        lines += ["", "Shrunk target: the target's implied move times a factor fitted only on "
+                  "targets whose window had closed by the report's date (slope of realized on "
+                  f"implied move through the origin, clipped to 0–1; dates with fewer than {MIN_GROUP} "
+                  "such targets are skipped). Both skills are on that same subset. A shrunk-target "
+                  "skill above 0 means the targets point the right way once their size is corrected."]
+    i = card["integrity"]
+    lines += ["", "## Integrity", "",
               f"- Reported price more than 1% from the actual close: {i['reported_price_off_1pct']} of "
               f"{i['reported_price_n']} ({i['reported_price_off_5pct']} more than 5%).",
               f"- Target pointing against the rating: {i['target_against_rating']} of "

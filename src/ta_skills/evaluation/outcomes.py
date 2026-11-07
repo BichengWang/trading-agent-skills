@@ -108,6 +108,7 @@ def score_forecast(forecast: dict, stock: pd.DataFrame, bench: pd.DataFrame | No
             continue
         window = after.iloc[: td + 1]
         row[f"pt_close_{end}"] = float(window["close"].iloc[-1])
+        row[f"pt_exit_{end}"] = window.index[-1].strftime("%Y-%m-%d")
         if target > row["p0"]:
             row[f"pt_touch_{end}"] = bool(window["high"].max() >= target)
         elif target < row["p0"]:
@@ -123,7 +124,10 @@ def score_ledger(forecasts: list[dict], config: dict, as_of: str) -> tuple[pd.Da
     benchmarks = {f["ticker"]: resolve_benchmark(f["ticker"], config) for f in rated}
     # Enough history before the first decision for 63-session momentum.
     start = (pd.Timestamp(min(f["date"] for f in rated)) - timedelta(days=130)).strftime("%Y-%m-%d")
-    end = (pd.Timestamp(as_of) + timedelta(days=1)).strftime("%Y-%m-%d")
+    # Through today, not the as-of date: Yahoo rescales every close for each split up to
+    # today, so a target needs the split rows after as-of too. score_forecast drops the
+    # bars after as-of itself.
+    end = (pd.Timestamp.today().normalize() + timedelta(days=1)).strftime("%Y-%m-%d")
     histories, failed = load_histories(set(benchmarks) | set(benchmarks.values()), start, end)
     cutoff = pd.Timestamp(as_of)
     rows = []
