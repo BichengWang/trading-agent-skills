@@ -27,6 +27,9 @@ docs = [
     "mkdocs-material>=9.5",
     "pymdown-extensions>=10.0",
 ]
+
+# A dependency group, not an extra, so `uv run` installs it on a fresh checkout.
+[dependency-groups]
 dev = [
     "ruff>=0.16",
     "pytest>=8.0",
