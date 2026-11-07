@@ -113,6 +113,7 @@ uv run ta eval report [--as-of YYYY-MM-DD]           # price every forecast; wri
 
 ```bash
 uv run ruff check .
+uv run ruff format .             # CI fails on unformatted code
 uv run pytest -q                 # network tests are marked `integration` and skipped by default
 ```
 

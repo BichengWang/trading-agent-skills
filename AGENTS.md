@@ -20,4 +20,4 @@ trading-agent-skills: TradingAgents' research pipeline as Agent Skills plus a de
 
 ## Before a PR
 
-`uv run ruff check .` and `uv run pytest -q` must pass (CI runs both on Python 3.11-3.13). Add the `auto-merge` label to a PR that should merge itself once checks pass.
+`uv run ruff check .`, `uv run ruff format --check .` and `uv run pytest -q` must pass (CI runs all three on Python 3.11-3.13); `uv run ruff format .` fixes formatting. Add the `auto-merge` label to a PR that should merge itself once checks pass.
