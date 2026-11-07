@@ -19,6 +19,7 @@ known agent H3s — are preserved. H4+ inside a body is left alone.
 
 Idempotent: a second run is a no-op because no body H1/H2/H3 remains.
 """
+
 from __future__ import annotations
 
 import re
@@ -29,20 +30,22 @@ WRAPPER_H2 = re.compile(r"^## [IVX]+\. ")
 # H3 wrappers are the fixed agent labels emitted by
 # ``ta_skills/reporting.py``. Anything else at H3 inside a body region is
 # treated as agent-emitted content and demoted.
-WRAPPER_H3_LABELS = frozenset({
-    "Market Analyst",
-    "Sentiment Analyst",
-    "News Analyst",
-    "Fundamentals Analyst",
-    "Bull Researcher",
-    "Bear Researcher",
-    "Research Manager",
-    "Trader",
-    "Aggressive Analyst",
-    "Conservative Analyst",
-    "Neutral Analyst",
-    "Portfolio Manager",
-})
+WRAPPER_H3_LABELS = frozenset(
+    {
+        "Market Analyst",
+        "Sentiment Analyst",
+        "News Analyst",
+        "Fundamentals Analyst",
+        "Bull Researcher",
+        "Bear Researcher",
+        "Research Manager",
+        "Trader",
+        "Aggressive Analyst",
+        "Conservative Analyst",
+        "Neutral Analyst",
+        "Portfolio Manager",
+    }
+)
 
 HEADING = re.compile(r"^(#{1,6}) (.*?)\s*$")
 

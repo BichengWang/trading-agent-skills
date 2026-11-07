@@ -10,7 +10,8 @@ def field(text: str, name: str) -> str:
     m = re.search(
         rf"^[ \t]*(?:[-*][ \t]+|\d+[.)][ \t]+)?(?:\*\*)?{re.escape(name)}"
         rf"(?:\*\*)?[ \t]*:[ \t]*(?:\*\*)?(?:\n[ \t]*)?([^\n]+)$",
-        text, flags=re.I | re.M,
+        text,
+        flags=re.I | re.M,
     )
     if m:
         value = clean_field_value(m.group(1))
@@ -30,13 +31,16 @@ def clean_field_value(value: str) -> str:
 
 def parse_money(value: str) -> float | None:
     value = value.strip().replace("**", "").replace(",", "")
-    m = re.match(r"^(?:[$€£¥]\s*)?([0-9]+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?=$|\s|[();!?]|\.(?!\d))", value)
+    m = re.match(
+        r"^(?:[$€£¥]\s*)?([0-9]+(?:\.\d+)?(?:[eE][+-]?\d+)?)(?=$|\s|[();!?]|\.(?!\d))", value
+    )
     if not m or re.match(
         r"\s*(?:%|(?:[-–—/]|to\b)\s*(?:[$€£¥]\s*)?\d|"
         r"(?:[-–—]\s*)?(?:(?:business|trading)\s+)?"
         r"(?:days?|weeks?|months?|quarters?|years?|hours?|minutes?|seconds?|[dwmqy]|"
         r"percent(?:age)?|basis\s+points?|bps?|times|multiple)\b)",
-        value[m.end():], flags=re.I,
+        value[m.end() :],
+        flags=re.I,
     ):
         return None
     number = float(m.group(1))

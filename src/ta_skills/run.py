@@ -59,7 +59,13 @@ ANALYSTS = ("market", "sentiment", "news", "fundamentals")
 DEBATE_ROLES = ("bull", "bear")
 RISK_ROLES = ("aggressive", "conservative", "neutral")
 ROLES = (
-    *ANALYSTS, "memory", *DEBATE_ROLES, "research_manager", "trader", *RISK_ROLES, "portfolio_manager",
+    *ANALYSTS,
+    "memory",
+    *DEBATE_ROLES,
+    "research_manager",
+    "trader",
+    *RISK_ROLES,
+    "portfolio_manager",
 )
 
 ROLE_SKILL = {
@@ -87,7 +93,10 @@ ANALYST_TOOLS: dict[str, tuple[str, ...]] = {
     "sentiment": (),
     "news": ("get_news", "get_global_news", "get_macro_indicators", "get_prediction_markets"),
     "fundamentals": (
-        "get_fundamentals", "get_balance_sheet", "get_cashflow", "get_income_statement",
+        "get_fundamentals",
+        "get_balance_sheet",
+        "get_cashflow",
+        "get_income_statement",
         "get_insider_transactions",
     ),
 }
@@ -313,7 +322,10 @@ def init_run(
 
     identity = resolve_instrument_identity(symbol, kind, trade_date)
     state = _initial_state(
-        symbol, trade_date, kind, build_instrument_context(symbol, kind, identity, trade_date),
+        symbol,
+        trade_date,
+        kind,
+        build_instrument_context(symbol, kind, identity, trade_date),
         portfolio_context,
     )
     state["run"] = {
@@ -474,7 +486,9 @@ def prompt_values(role: str, state: dict, run_dir=None) -> dict[str, str]:
 
             values["indicator_menu"] = render_prompt_section()
         if role == "news":
-            values["asset_label"] = "company" if state.get("asset_type", "stock") == "stock" else "asset"
+            values["asset_label"] = (
+                "company" if state.get("asset_type", "stock") == "stock" else "asset"
+            )
         return values
 
     if role == "sentiment":
@@ -501,14 +515,17 @@ def prompt_values(role: str, state: dict, run_dir=None) -> dict[str, str]:
         return {
             "target_label": "stock" if stock else "asset",
             "fundamentals_label": (
-                "Company fundamentals report" if stock
+                "Company fundamentals report"
+                if stock
                 else "Asset fundamentals report (may be unavailable for crypto)"
             ),
             "instrument_context": instrument,
             **_reports(state),
             "language_instruction": language,
             "history": debate.get("history", "") or "(the debate has not started yet)",
-            "current_response": opponent_argument_or_opening(debate.get("current_response", ""), opponent),
+            "current_response": opponent_argument_or_opening(
+                debate.get("current_response", ""), opponent
+            ),
         }
 
     if role == "research_manager":
@@ -564,9 +581,12 @@ def prompt_values(role: str, state: dict, run_dir=None) -> dict[str, str]:
             "research_plan": state["investment_plan"],
             "trader_plan": state["trader_investment_plan"],
             "market_report": state.get("market_report") or "No technical market report supplied.",
-            "fundamentals_report": state.get("fundamentals_report") or "No fundamentals report supplied.",
+            "fundamentals_report": state.get("fundamentals_report")
+            or "No fundamentals report supplied.",
             "lessons_line": (
-                f"- Lessons from prior decisions and outcomes:\n{past_context}\n" if past_context else ""
+                f"- Lessons from prior decisions and outcomes:\n{past_context}\n"
+                if past_context
+                else ""
             ),
             "history": state["risk_debate_state"]["history"],
             "language_instruction": language,
@@ -595,7 +615,9 @@ def prompt_for(run_dir, role: str) -> str:
     """Render ``role``'s prompt at its current turn, save it under ``prompts/`` and return it."""
     state = load_state(run_dir)
     if role == "memory":
-        raise RunError("the memory role's prompts come from `ta memory due`, one per pending decision")
+        raise RunError(
+            "the memory role's prompts come from `ta memory due`, one per pending decision"
+        )
     _require_runnable(state, role)
     text = render_role_prompt(role, state, run_dir)
     path = Path(run_dir) / "prompts" / f"{role_label(role, turn_of(state, role))}.md"
@@ -671,8 +693,10 @@ def _apply_debate(state: dict, role: str, text: str) -> None:
     argument = f"{SPEAKER_PREFIX[role]}: {text}"
     state["investment_debate_state"] = {
         "history": debate.get("history", "") + "\n" + argument,
-        "bull_history": debate.get("bull_history", "") + ("\n" + argument if role == "bull" else ""),
-        "bear_history": debate.get("bear_history", "") + ("\n" + argument if role == "bear" else ""),
+        "bull_history": debate.get("bull_history", "")
+        + ("\n" + argument if role == "bull" else ""),
+        "bear_history": debate.get("bear_history", "")
+        + ("\n" + argument if role == "bear" else ""),
         "current_response": argument,
         "count": debate["count"] + 1,
     }
@@ -815,28 +839,32 @@ def memory_due(run_dir) -> list[dict]:
         settlement = due_outcomes(_memory_log(), config)
         failed = [list(f) for f in settlement.failed]
         for due in settlement.due:
-            items.append({
-                "ticker": due.ticker,
-                "date": due.date,
-                "raw": due.raw,
-                "alpha": due.alpha,
-                "holding_days": due.holding_days,
-                "benchmark": due.benchmark,
-                "resolution_date": due.resolution_date,
-                "decision": due.decision,
-            })
+            items.append(
+                {
+                    "ticker": due.ticker,
+                    "date": due.date,
+                    "raw": due.raw,
+                    "alpha": due.alpha,
+                    "holding_days": due.holding_days,
+                    "benchmark": due.benchmark,
+                    "resolution_date": due.resolution_date,
+                    "decision": due.decision,
+                }
+            )
     except Exception as exc:  # noqa: BLE001 — a memory failure never ends the run
-        error = (
-            f"Past decisions could not be settled this run ({type(exc).__name__}); they stay pending."
-        )
+        error = f"Past decisions could not be settled this run ({type(exc).__name__}); they stay pending."
     with update_state(run_dir) as state:
         state["run"]["memory_due"] = items
         state["run"]["memory_failed"] = failed
         state["run"]["memory_error"] = error
     return [
         {
-            "ticker": i["ticker"], "date": i["date"], "raw": i["raw"], "alpha": i["alpha"],
-            "holding_days": i["holding_days"], "benchmark": i["benchmark"],
+            "ticker": i["ticker"],
+            "date": i["date"],
+            "raw": i["raw"],
+            "alpha": i["alpha"],
+            "holding_days": i["holding_days"],
+            "benchmark": i["benchmark"],
             "prompt": reflection_prompt(i),
         }
         for i in items
@@ -850,7 +878,11 @@ def memory_resolve(run_dir, ticker: str, date: str, file) -> bool:
         raise RunError("the reflection is empty", code=2)
     state = load_state(run_dir)
     item = next(
-        (i for i in state["run"].get("memory_due", []) if i["ticker"] == ticker and i["date"] == date),
+        (
+            i
+            for i in state["run"].get("memory_due", [])
+            if i["ticker"] == ticker and i["date"] == date
+        ),
         None,
     )
     if item is None:
@@ -858,7 +890,12 @@ def memory_resolve(run_dir, ticker: str, date: str, file) -> bool:
             f"{ticker} {date} is not in this run's due list; run `ta memory due --run DIR` first"
         )
     return _memory_log().update_with_outcome(
-        ticker, date, item["raw"], item["alpha"], item["holding_days"], reflection,
+        ticker,
+        date,
+        item["raw"],
+        item["alpha"],
+        item["holding_days"],
+        reflection,
         resolution_date=item["resolution_date"],
     )
 
@@ -992,7 +1029,11 @@ def finish_run(run_dir, reports_dir=None, html: bool = True) -> dict:
     except MissingPriceTargetError as exc:
         raise RunError(str(exc)) from exc
 
-    log_dir = Path(config["results_dir"]).expanduser() / safe_ticker_component(ticker) / "TradingAgentsStrategy_logs"
+    log_dir = (
+        Path(config["results_dir"]).expanduser()
+        / safe_ticker_component(ticker)
+        / "TradingAgentsStrategy_logs"
+    )
     log_dir.mkdir(parents=True, exist_ok=True)
     entry = _state_log(final_state, settings)
     # Reports can be in any language and this file is read by a person.
@@ -1004,7 +1045,9 @@ def finish_run(run_dir, reports_dir=None, html: bool = True) -> dict:
     decision = final_state.get("final_trade_decision")
     if decision:
         _memory_log().store_decision(
-            ticker=ticker, trade_date=trade_date, final_trade_decision=decision, rating=rating,
+            ticker=ticker,
+            trade_date=trade_date,
+            final_trade_decision=decision,
+            rating=rating,
         )
     return {"report_dir": str(report_dir), "complete_report": str(complete), "rating": rating}
-

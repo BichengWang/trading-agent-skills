@@ -119,8 +119,9 @@ def test_submit_memory_computes_past_context_and_marks_the_step_done(log, monkey
 @pytest.mark.unit
 def test_a_historical_run_only_learns_from_outcomes_known_by_its_date(log, monkeypatch):
     log.store_decision("NVDA", "2025-03-10", DECISION)
-    log.update_with_outcome("NVDA", "2025-03-10", 0.05, 0.02, 5, "Too late to know.",
-                            resolution_date="2025-03-17")
+    log.update_with_outcome(
+        "NVDA", "2025-03-10", 0.05, 0.02, 5, "Too late to know.", resolution_date="2025-03-17"
+    )
     run_dir = new_run()  # dated 2025-03-14, in the past
 
     submit(run_dir, "memory")
@@ -142,7 +143,9 @@ def test_an_unreadable_price_feed_is_noted_and_the_decision_stays_pending(log, m
     submit(run_dir, "memory")
 
     state = run.load_state(run_dir)
-    assert state["memory_note"] == "1 past decision(s) could not be settled this run and stay pending."
+    assert (
+        state["memory_note"] == "1 past decision(s) could not be settled this run and stay pending."
+    )
     assert len(log.get_pending_entries()) == 1
 
 
@@ -194,8 +197,18 @@ def test_memory_cli_round_trip(log, monkeypatch, capsys):
     assert json.loads(capsys.readouterr().out) == due
 
     reflection = draft(run_dir, "Lesson learned.")
-    args = ["memory", "resolve", "--run", str(run_dir), "--ticker", "NVDA", "--date", "2025-01-06",
-            "--file", str(reflection)]
+    args = [
+        "memory",
+        "resolve",
+        "--run",
+        str(run_dir),
+        "--ticker",
+        "NVDA",
+        "--date",
+        "2025-01-06",
+        "--file",
+        str(reflection),
+    ]
     assert cli.main(args) == 0
     assert json.loads(capsys.readouterr().out)["resolved"] is True
     assert cli.main(args) == 0

@@ -44,8 +44,15 @@ def test_news_lookup_normalizes_symbol(monkeypatch):
     class FakeSearch:
         def __init__(self, query, **k):
             seen["searched"] = query
-            self.news = [{"title": "Gold", "publisher": "P", "link": "l",
-                          "providerPublishTime": 1736150400, "relatedTickers": ["GC=F"]}]
+            self.news = [
+                {
+                    "title": "Gold",
+                    "publisher": "P",
+                    "link": "l",
+                    "providerPublishTime": 1736150400,
+                    "relatedTickers": ["GC=F"],
+                }
+            ]
             self.quotes = [{"symbol": "GC=F"}]
 
     monkeypatch.setattr(ynews.yf, "Ticker", FakeTicker)
@@ -54,7 +61,7 @@ def test_news_lookup_normalizes_symbol(monkeypatch):
 
     out = ynews.get_news_yfinance("XAUUSD", "2025-01-01", "2025-01-10")
 
-    assert seen["query"] == "GC=F"     # news queried with the canonical symbol
+    assert seen["query"] == "GC=F"  # news queried with the canonical symbol
     assert seen["searched"] == "GC=F"
-    assert "XAUUSD" in out            # the user's ticker stays in the report
-    assert "GC=F" in out              # provenance noted
+    assert "XAUUSD" in out  # the user's ticker stays in the report
+    assert "GC=F" in out  # provenance noted

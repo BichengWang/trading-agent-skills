@@ -20,32 +20,66 @@ def test_init_writes_the_source_state_field_for_field(isolated_config):
     state = run.load_state(run_dir)
 
     assert set(state) == {
-        "company_of_interest", "asset_type", "instrument_context", "trade_date", "market_report",
-        "sentiment_report", "news_report", "fundamentals_report", "investment_debate_state",
-        "investment_plan", "trader_investment_plan", "risk_debate_state", "final_trade_decision",
-        "final_rating", "past_context", "memory_note", "portfolio_context", "run",
+        "company_of_interest",
+        "asset_type",
+        "instrument_context",
+        "trade_date",
+        "market_report",
+        "sentiment_report",
+        "news_report",
+        "fundamentals_report",
+        "investment_debate_state",
+        "investment_plan",
+        "trader_investment_plan",
+        "risk_debate_state",
+        "final_trade_decision",
+        "final_rating",
+        "past_context",
+        "memory_note",
+        "portfolio_context",
+        "run",
     }
     assert state["company_of_interest"] == "NVDA" and state["asset_type"] == "stock"
     assert state["trade_date"] == TRADE_DATE
     assert "Company: NVIDIA Corporation" in state["instrument_context"]
     assert state["investment_debate_state"] == {
-        "bull_history": "", "bear_history": "", "history": "", "current_response": "", "count": 0,
+        "bull_history": "",
+        "bear_history": "",
+        "history": "",
+        "current_response": "",
+        "count": 0,
     }
     assert state["risk_debate_state"] == {
-        "aggressive_history": "", "conservative_history": "", "neutral_history": "", "history": "",
-        "latest_speaker": "", "current_aggressive_response": "", "current_conservative_response": "",
-        "current_neutral_response": "", "count": 0,
+        "aggressive_history": "",
+        "conservative_history": "",
+        "neutral_history": "",
+        "history": "",
+        "latest_speaker": "",
+        "current_aggressive_response": "",
+        "current_conservative_response": "",
+        "current_neutral_response": "",
+        "count": 0,
     }
     block = state["run"]
     assert block["selected_analysts"] == ["market", "sentiment", "news", "fundamentals"]
-    assert (block["max_debate_rounds"], block["max_risk_discuss_rounds"], block["max_tool_rounds"]) == (1, 1, 20)
+    assert (
+        block["max_debate_rounds"],
+        block["max_risk_discuss_rounds"],
+        block["max_tool_rounds"],
+    ) == (1, 1, 20)
     assert (block["provider"], block["deep_model"], block["quick_model"], block["model_label"]) == (
-        "omp", "deep", "quick", "gpt/x:1")
+        "omp",
+        "deep",
+        "quick",
+        "gpt/x:1",
+    )
     assert block["done_roles"] == [] and block["tool_calls"] == {}
     assert block["output_language"] == "English" and block["created_at"]
     for sub in ("prompts", "outputs", "tools"):
         assert (run_dir / sub).is_dir()
-    assert run_dir.parent.name == "NVDA" and run_dir.parent.parent == Path(isolated_config["runs_dir"])
+    assert run_dir.parent.name == "NVDA" and run_dir.parent.parent == Path(
+        isolated_config["runs_dir"]
+    )
 
 
 @pytest.mark.unit
@@ -58,9 +92,14 @@ def test_init_normalizes_the_symbol_and_detects_crypto():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("date, message", [
-    ("2025-3-14", "YYYY-MM-DD"), ("14/03/2025", "YYYY-MM-DD"), ("2999-01-01", "future"),
-])
+@pytest.mark.parametrize(
+    "date, message",
+    [
+        ("2025-3-14", "YYYY-MM-DD"),
+        ("14/03/2025", "YYYY-MM-DD"),
+        ("2999-01-01", "future"),
+    ],
+)
 def test_init_rejects_a_date_that_is_not_canonical_or_is_in_the_future(date, message):
     with pytest.raises(run.RunError, match=message):
         new_run(trade_date=date)
@@ -69,7 +108,9 @@ def test_init_rejects_a_date_that_is_not_canonical_or_is_in_the_future(date, mes
 @pytest.mark.unit
 def test_init_analyst_selection():
     assert run.load_state(new_run(analysts="social,market"))["run"]["selected_analysts"] == [
-        "sentiment", "market"]
+        "sentiment",
+        "market",
+    ]
     assert run.parse_analysts(["news", "news"]) == ["news"]
     with pytest.raises(run.RunError, match="unknown analyst key: macro"):
         new_run(analysts="market,macro")
@@ -98,8 +139,15 @@ def test_depth_sets_both_round_counts_unless_the_environment_set_one(monkeypatch
 @pytest.mark.unit
 def test_init_renders_the_portfolio_once_and_rejects_a_bad_file(tmp_path):
     book = tmp_path / "book.json"
-    book.write_text(json.dumps({"cash": 1000, "currency": "USD",
-                                "positions": [{"ticker": "NVDA", "quantity": 12, "average_price": 90}]}))
+    book.write_text(
+        json.dumps(
+            {
+                "cash": 1000,
+                "currency": "USD",
+                "positions": [{"ticker": "NVDA", "quantity": 12, "average_price": 90}],
+            }
+        )
+    )
     state = run.load_state(new_run(portfolio=str(book)))
     assert "Current position in NVDA: 12 units" in state["portfolio_context"]
     assert run.load_state(new_run())["portfolio_context"] == ""
@@ -127,8 +175,19 @@ def role_order(depth=None, **kwargs):
 def test_the_full_sequence_at_depth_one():
     order, run_dir = role_order()
     assert order == [
-        "market", "sentiment", "news", "fundamentals", "memory", "bull", "bear", "research_manager",
-        "trader", "aggressive", "conservative", "neutral", "portfolio_manager",
+        "market",
+        "sentiment",
+        "news",
+        "fundamentals",
+        "memory",
+        "bull",
+        "bear",
+        "research_manager",
+        "trader",
+        "aggressive",
+        "conservative",
+        "neutral",
+        "portfolio_manager",
     ]
     assert run.next_phase(run.load_state(run_dir)) == ("done", [])
 
@@ -136,9 +195,9 @@ def test_the_full_sequence_at_depth_one():
 @pytest.mark.unit
 def test_the_full_sequence_at_depth_three():
     order, _ = role_order(depth=3)
-    debate = order[order.index("bull"):order.index("research_manager")]
+    debate = order[order.index("bull") : order.index("research_manager")]
     assert debate == ["bull", "bear"] * 3
-    risk = order[order.index("aggressive"):order.index("portfolio_manager")]
+    risk = order[order.index("aggressive") : order.index("portfolio_manager")]
     assert risk == ["aggressive", "conservative", "neutral"] * 3
 
 
@@ -161,7 +220,12 @@ def test_phases_are_named_in_order():
             break
         submit(run_dir, roles[0])
     assert seen == [
-        "analysts", "research_debate", "research_manager", "trader", "risk_debate", "portfolio_manager",
+        "analysts",
+        "research_debate",
+        "research_manager",
+        "trader",
+        "risk_debate",
+        "portfolio_manager",
         "done",
     ]
 
@@ -196,13 +260,17 @@ def test_a_role_that_is_not_runnable_is_refused():
 
 
 def _debate_state(current_response, count, rounds=1):
-    return {"investment_debate_state": {"current_response": current_response, "count": count},
-            "run": {"max_debate_rounds": rounds}}
+    return {
+        "investment_debate_state": {"current_response": current_response, "count": count},
+        "run": {"max_debate_rounds": rounds},
+    }
 
 
 def _risk_state(latest_speaker, count, rounds=1):
-    return {"risk_debate_state": {"latest_speaker": latest_speaker, "count": count},
-            "run": {"max_risk_discuss_rounds": rounds}}
+    return {
+        "risk_debate_state": {"latest_speaker": latest_speaker, "count": count},
+        "run": {"max_risk_discuss_rounds": rounds},
+    }
 
 
 @pytest.mark.unit
@@ -265,9 +333,16 @@ def drive_until(run_dir, role):
 @pytest.mark.unit
 def test_structured_roles_end_with_the_generated_json_section():
     run_dir = new_run()
-    assert run.prompt_for(run_dir, "sentiment").rstrip().splitlines()[-1].startswith("- `narrative`")
+    assert (
+        run.prompt_for(run_dir, "sentiment").rstrip().splitlines()[-1].startswith("- `narrative`")
+    )
     drive_until(run_dir, "trader")
-    assert run.prompt_for(run_dir, "trader").rstrip().splitlines()[-1].startswith("- `position_sizing`")
+    assert (
+        run.prompt_for(run_dir, "trader")
+        .rstrip()
+        .splitlines()[-1]
+        .startswith("- `position_sizing`")
+    )
     drive_until(run_dir, "portfolio_manager")
     text = run.prompt_for(run_dir, "portfolio_manager")
     assert "## JSON submission" in text and "- `price_target`" in text
@@ -295,7 +370,9 @@ def test_absent_reports_and_opening_markers_reach_the_debate_prompts():
     drive_until(run_dir, "bull")
     system, human = run.prompt_for(run_dir, "bull").split("\n---HUMAN---\n")
     assert "(No sentiment report in this run: it is not available, not an empty finding.)" in system
-    assert "(No news report in this run" in system and "(No fundamentals report in this run" in system
+    assert (
+        "(No news report in this run" in system and "(No fundamentals report in this run" in system
+    )
     assert "Trend is up." in system
     assert "(The bear analyst has not spoken yet — open the debate with your own case.)" in human
     assert "(the debate has not started yet)" in human
@@ -371,7 +448,9 @@ def test_the_portfolio_manager_needs_a_positive_numeric_price_target(target):
         submit(run_dir, "portfolio_manager", json.dumps(decision), ext="json")
     assert exc.value.code == 2
     assert "positive numeric Price Target" in str(exc.value)
-    assert "Correction required: the previous attempt did not produce a valid Price Target." in str(exc.value)
+    assert "Correction required: the previous attempt did not produce a valid Price Target." in str(
+        exc.value
+    )
     assert run.next_phase(run.load_state(run_dir)) == ("portfolio_manager", ["portfolio_manager"])
 
 
@@ -379,7 +458,12 @@ def test_the_portfolio_manager_needs_a_positive_numeric_price_target(target):
 def test_a_trader_price_written_as_a_percentage_drops_only_that_field():
     run_dir = new_run()
     drive_until(run_dir, "trader")
-    submit(run_dir, "trader", json.dumps({"action": "Sell", "reasoning": "r", "stop_loss": "5%"}), ext="json")
+    submit(
+        run_dir,
+        "trader",
+        json.dumps({"action": "Sell", "reasoning": "r", "stop_loss": "5%"}),
+        ext="json",
+    )
     plan = run.load_state(run_dir)["trader_investment_plan"]
     assert "**Action**: Sell" in plan and "**Stop Loss**: not provided" in plan
     assert plan.endswith("FINAL TRANSACTION PROPOSAL: **SELL**")
@@ -405,9 +489,16 @@ def test_analysts_write_their_report_key_and_nothing_else():
     submit(run_dir, "sentiment")
     after = run.load_state(run_dir)
     assert after["market_report"] == "**Current Price**: 101.0\n\n# Market view\n\nTrend is up."
-    assert after["sentiment_report"].startswith("**Overall Sentiment:** **Bullish** (Score: 7.2/10)")
+    assert after["sentiment_report"].startswith(
+        "**Overall Sentiment:** **Bullish** (Score: 7.2/10)"
+    )
     assert "**Confidence:** Medium" in after["sentiment_report"]
-    for key in ("news_report", "fundamentals_report", "investment_debate_state", "risk_debate_state"):
+    for key in (
+        "news_report",
+        "fundamentals_report",
+        "investment_debate_state",
+        "risk_debate_state",
+    ):
         assert after[key] == before[key]
     assert after["run"]["done_roles"] == ["market", "sentiment"]
 
@@ -419,14 +510,20 @@ def test_the_debate_writes_prefixes_histories_counts_and_the_manager_overwrites_
     submit(run_dir, "bull", "up\n")
     debate = run.load_state(run_dir)["investment_debate_state"]
     assert debate == {
-        "history": "\nBull Analyst: up", "bull_history": "\nBull Analyst: up", "bear_history": "",
-        "current_response": "Bull Analyst: up", "count": 1,
+        "history": "\nBull Analyst: up",
+        "bull_history": "\nBull Analyst: up",
+        "bear_history": "",
+        "current_response": "Bull Analyst: up",
+        "count": 1,
     }
     submit(run_dir, "bear", "down")
     debate = run.load_state(run_dir)["investment_debate_state"]
     assert debate == {
-        "history": "\nBull Analyst: up\nBear Analyst: down", "bull_history": "\nBull Analyst: up",
-        "bear_history": "\nBear Analyst: down", "current_response": "Bear Analyst: down", "count": 2,
+        "history": "\nBull Analyst: up\nBear Analyst: down",
+        "bull_history": "\nBull Analyst: up",
+        "bear_history": "\nBear Analyst: down",
+        "current_response": "Bear Analyst: down",
+        "count": 2,
     }
     submit(run_dir, "research_manager")
     state = run.load_state(run_dir)
@@ -435,7 +532,10 @@ def test_the_debate_writes_prefixes_histories_counts_and_the_manager_overwrites_
     after = state["investment_debate_state"]
     assert after["current_response"] == plan  # the plan replaces the last speech
     assert after["count"] == 2 and after["history"] == debate["history"]
-    assert after["bull_history"] == debate["bull_history"] and after["bear_history"] == debate["bear_history"]
+    assert (
+        after["bull_history"] == debate["bull_history"]
+        and after["bear_history"] == debate["bear_history"]
+    )
 
 
 @pytest.mark.unit
@@ -460,7 +560,9 @@ def test_the_risk_debate_writes_and_the_portfolio_manager_is_the_judge():
     submit(run_dir, "portfolio_manager")
     state = run.load_state(run_dir)
     assert state["risk_debate_state"] == {**risk, "latest_speaker": "Judge"}
-    assert state["final_trade_decision"].startswith("**Rating**: Overweight\n\n**Executive Summary**:")
+    assert state["final_trade_decision"].startswith(
+        "**Rating**: Overweight\n\n**Executive Summary**:"
+    )
     assert "**Price Target**: 120.0" in state["final_trade_decision"]
 
 
@@ -469,15 +571,22 @@ def test_the_final_rating_is_the_typed_one_even_when_the_thesis_quotes_another()
     run_dir = new_run()
     drive(run_dir)
     state = run.load_state(run_dir)
-    assert "rating: Hold" in state["final_trade_decision"]  # the thesis quotes someone else's rating
+    assert (
+        "rating: Hold" in state["final_trade_decision"]
+    )  # the thesis quotes someone else's rating
     assert state["final_rating"] == "Overweight"
     assert run_rating(state) == "Overweight"
 
 
 @pytest.mark.unit
 def test_a_state_without_the_typed_rating_reads_it_from_the_decision_or_says_review():
-    assert run_rating({"final_rating": "", "final_trade_decision": "**Rating**: Sell\n\nx"}) == "Sell"
-    assert run_rating({"final_rating": "", "final_trade_decision": "Trim the position."}) == RATING_REVIEW
+    assert (
+        run_rating({"final_rating": "", "final_trade_decision": "**Rating**: Sell\n\nx"}) == "Sell"
+    )
+    assert (
+        run_rating({"final_rating": "", "final_trade_decision": "Trim the position."})
+        == RATING_REVIEW
+    )
     assert run_rating({}) == RATING_REVIEW
 
 
@@ -486,8 +595,16 @@ def test_trader_and_research_manager_outputs_are_kept_as_files():
     run_dir = new_run()
     drive(run_dir)
     outputs = {p.name for p in (run_dir / "outputs").iterdir()}
-    assert {"trader.json", "trader.md", "research_manager.json", "portfolio_manager.json",
-            "sentiment.json", "market.md", "aggressive_1.md", "neutral_1.md"} <= outputs
+    assert {
+        "trader.json",
+        "trader.md",
+        "research_manager.json",
+        "portfolio_manager.json",
+        "sentiment.json",
+        "market.md",
+        "aggressive_1.md",
+        "neutral_1.md",
+    } <= outputs
     assert json.loads((run_dir / "outputs" / "trader.json").read_text())["action"] == "Buy"
 
 
@@ -505,7 +622,10 @@ def test_concurrent_analyst_submissions_keep_every_report():
         except Exception as exc:  # noqa: BLE001 — collected for the assertion
             errors.append(exc)
 
-    threads = [threading.Thread(target=work, args=(r,)) for r in ("market", "sentiment", "news", "fundamentals", "memory")]
+    threads = [
+        threading.Thread(target=work, args=(r,))
+        for r in ("market", "sentiment", "news", "fundamentals", "memory")
+    ]
     for t in threads:
         t.start()
     for t in threads:
@@ -513,7 +633,9 @@ def test_concurrent_analyst_submissions_keep_every_report():
 
     state = run.load_state(run_dir)
     assert errors == []
-    assert sorted(state["run"]["done_roles"]) == sorted(["market", "sentiment", "news", "fundamentals", "memory"])
+    assert sorted(state["run"]["done_roles"]) == sorted(
+        ["market", "sentiment", "news", "fundamentals", "memory"]
+    )
     for key in ("market_report", "sentiment_report", "news_report", "fundamentals_report"):
         assert state[key]
     assert run.next_phase(state) == ("research_debate", ["bull"])

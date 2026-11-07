@@ -206,8 +206,12 @@ def _render_agent_text(md: MarkdownIt, text: str, normalize_headings: bool = Fal
 
 # What each data category serves, as a reader would name it.
 _CATEGORY = {
-    "core_stock_apis": "Prices", "technical_indicators": "Indicators", "fundamental_data": "Fundamentals",
-    "news_data": "News", "macro_data": "Macro", "prediction_markets": "Prediction markets",
+    "core_stock_apis": "Prices",
+    "technical_indicators": "Indicators",
+    "fundamental_data": "Fundamentals",
+    "news_data": "News",
+    "macro_data": "Macro",
+    "prediction_markets": "Prediction markets",
 }
 
 
@@ -232,25 +236,38 @@ def _run_details(final_state: dict, settings: dict | None) -> list[tuple[str, st
         s = settings.get
         for tier in ("deep", "quick"):
             provider = s(f"{tier}_think_provider") or s("llm_provider", "?")
-            details.append((f"{tier.capitalize()} model", _fields([provider, s(f"{tier}_think_llm", "?")])))
+            details.append(
+                (f"{tier.capitalize()} model", _fields([provider, s(f"{tier}_think_llm", "?")]))
+            )
         details.append(("Analysts", _fields(analyst_names(s("analysts")))))
-        details.append(("Debate rounds", " ".join((
-            _group("research", _fields([s("max_debate_rounds", "?")])),
-            _group("risk", _fields([s("max_risk_discuss_rounds", "?")])),
-        ))))
+        details.append(
+            (
+                "Debate rounds",
+                " ".join(
+                    (
+                        _group("research", _fields([s("max_debate_rounds", "?")])),
+                        _group("risk", _fields([s("max_risk_discuss_rounds", "?")])),
+                    )
+                ),
+            )
+        )
         vendors = {**(s("data_vendors") or {}), **(s("tool_vendors") or {})}
         if vendors:
-            details.append(("Data vendors", " ".join(
-                _group(_CATEGORY.get(k, k), _chain(v)) for k, v in vendors.items()
-            )))
+            details.append(
+                (
+                    "Data vendors",
+                    " ".join(_group(_CATEGORY.get(k, k), _chain(v)) for k, v in vendors.items()),
+                )
+            )
         details.append(("Version", escape(f"trading-agent-skills {s('version', '?')}")))
     if final_state.get("memory_note"):
         details.append(("Memory log", escape(final_state["memory_note"])))
     return details
 
 
-def render_report(ticker: str, final_state: dict, settings: dict | None, parts,
-                  normalize_headings: bool = False) -> str:
+def render_report(
+    ticker: str, final_state: dict, settings: dict | None, parts, normalize_headings: bool = False
+) -> str:
     """The report page: title and rating, what produced the run, contents, sections."""
     md = _markdown()
     rating = run_rating(final_state) if final_state.get("final_trade_decision") else ""
@@ -273,8 +290,10 @@ def render_report(ticker: str, final_state: dict, settings: dict | None, parts,
             for m, (agent, _f, _t) in enumerate(written, 1)
         )
         numeral, _, name = heading.partition(". ")
-        contents.append(f'<li><a href="#s{n}"><span class="num">{escape(numeral)}</span> '
-                        f'<span class="label">{escape(name)}</span></a><ul>{agents}</ul></li>')
+        contents.append(
+            f'<li><a href="#s{n}"><span class="num">{escape(numeral)}</span> '
+            f'<span class="label">{escape(name)}</span></a><ul>{agents}</ul></li>'
+        )
         body.append(f'<section id="s{n}"><h2>{escape(heading)}</h2>')
         for m, (agent, _filename, text) in enumerate(written, 1):
             rendered = _render_agent_text(md, text, normalize_headings=normalize_headings)

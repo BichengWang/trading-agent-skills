@@ -21,7 +21,8 @@ class TestBuildInstrumentContext:
 
     def test_injects_resolved_identity(self):
         context = build_instrument_context(
-            "TOTDY", "stock",
+            "TOTDY",
+            "stock",
             {
                 "company_name": "TOTO LTD.",
                 "sector": "Industrials",
@@ -42,11 +43,15 @@ class TestBuildInstrumentContext:
 
     def test_a_historical_run_gets_only_the_current_name(self):
         context = build_instrument_context(
-            "TOTDY", "stock",
+            "TOTDY",
+            "stock",
             {"company_name": "TOTO LTD.", "sector": "Industrials", "exchange": "PNK"},
             trade_date="2020-01-02",
         )
-        assert "Company: TOTO LTD. (its current name, given only to identify it; on 2020-01-02" in context
+        assert (
+            "Company: TOTO LTD. (its current name, given only to identify it; on 2020-01-02"
+            in context
+        )
         assert "Industrials" not in context and "PNK" not in context
 
     def test_a_sector_or_an_industry_alone_is_labelled(self):
@@ -61,7 +66,9 @@ class TestGetInstrumentContextFromState:
         assert get_instrument_context_from_state(state) == "PRECOMPUTED"
 
     def test_fallback_is_network_free_ticker_only(self):
-        context = get_instrument_context_from_state({"company_of_interest": "NVDA", "asset_type": "stock"})
+        context = get_instrument_context_from_state(
+            {"company_of_interest": "NVDA", "asset_type": "stock"}
+        )
         assert "NVDA" in context
 
     def test_fallback_respects_asset_type(self):

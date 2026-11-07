@@ -51,7 +51,9 @@ def _by_day(closes):
 
 
 def fetch_returns(
-    ticker: str, trade_date: str, holding_days: int = 5,
+    ticker: str,
+    trade_date: str,
+    holding_days: int = 5,
     benchmark: str = "SPY",
 ) -> tuple[float | None, float | None, int | None, str | None]:
     """Fetch raw and alpha return for ticker over holding_days after trade_date.
@@ -123,7 +125,7 @@ class Settlement:
     """What a settlement pass found: decisions ready for reflection and those it could not score."""
 
     due: list[DueOutcome] = field(default_factory=list)
-    failed: list[tuple[str, str, str]] = field(default_factory=list)    # (ticker, date, reason)
+    failed: list[tuple[str, str, str]] = field(default_factory=list)  # (ticker, date, reason)
 
 
 def due_outcomes(memory_log, config: dict) -> Settlement:
@@ -140,17 +142,29 @@ def due_outcomes(memory_log, config: dict) -> Settlement:
         for entry in (e for e in pending if e["ticker"] == ticker):
             try:
                 raw, alpha, days, resolution_date = fetch_returns(
-                    ticker, entry["date"], config.get("holding_period_days", 5), benchmark=benchmark,
+                    ticker,
+                    entry["date"],
+                    config.get("holding_period_days", 5),
+                    benchmark=benchmark,
                 )
             except Exception as exc:
-                logger.warning("Prices for settling %s on %s were unavailable: %s", ticker, entry["date"], exc)
+                logger.warning(
+                    "Prices for settling %s on %s were unavailable: %s", ticker, entry["date"], exc
+                )
                 result.failed.append((ticker, entry["date"], f"prices unavailable: {exc}"))
                 continue
             if raw is None:
                 continue  # the holding window has not traded yet: try again next run
-            result.due.append(DueOutcome(
-                ticker=ticker, date=entry["date"], raw=raw, alpha=alpha, holding_days=days,
-                benchmark=benchmark, resolution_date=resolution_date,
-                decision=entry.get("decision", ""),
-            ))
+            result.due.append(
+                DueOutcome(
+                    ticker=ticker,
+                    date=entry["date"],
+                    raw=raw,
+                    alpha=alpha,
+                    holding_days=days,
+                    benchmark=benchmark,
+                    resolution_date=resolution_date,
+                    decision=entry.get("decision", ""),
+                )
+            )
     return result

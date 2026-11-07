@@ -59,13 +59,30 @@ def _trailing(series: pd.Series, n: int) -> float | None:
     return float(series.iloc[-1] / series.iloc[-1 - n] - 1) if len(series) > n else None
 
 
-def score_forecast(forecast: dict, stock: pd.DataFrame, bench: pd.DataFrame | None,
-                   as_of: pd.Timestamp, horizons=HORIZONS) -> dict:
+def score_forecast(
+    forecast: dict,
+    stock: pd.DataFrame,
+    bench: pd.DataFrame | None,
+    as_of: pd.Timestamp,
+    horizons=HORIZONS,
+) -> dict:
     """One forecast's outcome row. ``bench`` None: the instrument is its own benchmark."""
     date = pd.Timestamp(forecast["date"])
-    row = {k: forecast[k] for k in ("path", "ticker", "date", "model", "generated_at", "rating",
-                                    "confidence", "time_horizon", "horizon_min_td",
-                                    "horizon_max_td")}
+    row = {
+        k: forecast[k]
+        for k in (
+            "path",
+            "ticker",
+            "date",
+            "model",
+            "generated_at",
+            "rating",
+            "confidence",
+            "time_horizon",
+            "horizon_min_td",
+            "horizon_max_td",
+        )
+    }
     row["score"] = RATING_SCORE.get(forecast["rating"])
     # Yahoo rescales all history for every split up to today, as-of or not: a target
     # written before a split is rescaled by the same factor.
@@ -87,8 +104,11 @@ def score_forecast(forecast: dict, stock: pd.DataFrame, bench: pd.DataFrame | No
     bench = None if bench is None else bench[bench.index <= as_of]
     for n in MOMENTUM:
         own = _trailing(before["adj_close"], n)
-        base = (None if bench is None or own is None
-                else _trailing(bench.loc[bench.index <= date, "adj_close"], n))
+        base = (
+            None
+            if bench is None or own is None
+            else _trailing(bench.loc[bench.index <= date, "adj_close"], n)
+        )
         row[f"mom{n}"] = own - base if base is not None else None
 
     adj = after["adj_close"]
@@ -97,7 +117,12 @@ def score_forecast(forecast: dict, stock: pd.DataFrame, bench: pd.DataFrame | No
             continue
         exit_ = after.index[h]
         row[f"raw{h}"] = float(adj.iloc[h] / adj.iloc[0] - 1)
-        if bench is not None and not bench.empty and bench.index[0] <= entry and exit_ <= bench.index[-1]:
+        if (
+            bench is not None
+            and not bench.empty
+            and bench.index[0] <= entry
+            and exit_ <= bench.index[-1]
+        ):
             b = bench["adj_close"]
             row[f"alpha{h}"] = row[f"raw{h}"] - float(b.asof(exit_) / b.asof(entry) - 1)
 
@@ -134,9 +159,16 @@ def score_ledger(forecasts: list[dict], config: dict, as_of: str) -> tuple[pd.Da
     for f in rated:
         stock, bench_symbol = histories.get(f["ticker"]), benchmarks[f["ticker"]]
         if stock is None:
-            rows.append({"path": f["path"], "ticker": f["ticker"], "date": f["date"],
-                         "model": f["model"], "rating": f["rating"],
-                         "status": f"prices unavailable: {failed.get(f['ticker'])}"})
+            rows.append(
+                {
+                    "path": f["path"],
+                    "ticker": f["ticker"],
+                    "date": f["date"],
+                    "model": f["model"],
+                    "rating": f["rating"],
+                    "status": f"prices unavailable: {failed.get(f['ticker'])}",
+                }
+            )
             continue
         own = normalize_symbol(f["ticker"]) == normalize_symbol(bench_symbol)
         bench = None if own else histories.get(bench_symbol, _empty())

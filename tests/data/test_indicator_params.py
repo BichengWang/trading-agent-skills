@@ -69,7 +69,10 @@ class TestResolveColumn:
     def test_defaults_resolve_to_legacy_bare_columns(self):
         for name in ("rsi", "boll", "boll_ub", "boll_lb", "atr", "vwma", "mfi", "kdjk"):
             assert reg.resolve_column(name, reg.effective_params(name, {})) == name
-        assert reg.resolve_column("close_50_sma", reg.effective_params("close_50_sma", {})) == "close_50_sma"
+        assert (
+            reg.resolve_column("close_50_sma", reg.effective_params("close_50_sma", {}))
+            == "close_50_sma"
+        )
 
     def test_override_resolves_to_windowed_column(self):
         assert reg.resolve_column("rsi", {"window": 7}) == "rsi_7"
@@ -86,7 +89,9 @@ class TestResolveColumn:
     def test_non_parameterizable_names_keep_their_column(self):
         # adx's smoothing windows are stockstats class attributes; macd only
         # supports the awkward comma form — both stay fixed.
-        assert reg.resolve_column("adx", reg.effective_params("adx", {"adx": {"window": 21}})) == "adx"
+        assert (
+            reg.resolve_column("adx", reg.effective_params("adx", {"adx": {"window": 21}})) == "adx"
+        )
         assert reg.resolve_column("macd", reg.effective_params("macd", {})) == "macd"
 
 

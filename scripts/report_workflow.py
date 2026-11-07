@@ -7,6 +7,7 @@ and rendering logic:
     python scripts/report_workflow.py
     python scripts/report_workflow.py --analysis-date 20260602
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,9 +34,7 @@ from ta_skills.report_headings import transform  # noqa: E402
 
 normalize_analysis_date = site.normalize_analysis_date
 
-SUMMARY_LINK_RE = re.compile(
-    r"\[([^\]]+)\]\(\./([^/]+)/([^/]+)/complete_report\.md\)"
-)
+SUMMARY_LINK_RE = re.compile(r"\[([^\]]+)\]\(\./([^/]+)/([^/]+)/complete_report\.md\)")
 TRAILING_WHITESPACE_RE = re.compile(r"[ \t]+(?=\r?\n|$)")
 
 
@@ -119,8 +118,11 @@ def require_full_coverage(
 
 def runs_with_targets(selected: dict[tuple[str, str], site.Run]) -> dict[tuple[str, str], site.Run]:
     return {
-        key: run for key, run in selected.items()
-        if site.extract_price_target(site.read_text(DOCS / run.ticker / run.folder_name / "5_portfolio/decision.md"))
+        key: run
+        for key, run in selected.items()
+        if site.extract_price_target(
+            site.read_text(DOCS / run.ticker / run.folder_name / "5_portfolio/decision.md")
+        )
         is not None
     }
 
@@ -131,11 +133,7 @@ def report_path(run: site.Run) -> Path:
 
 def expected_stage_paths(run: site.Run) -> list[Path]:
     run_dir = DOCS / run.ticker / run.folder_name
-    return [
-        run_dir / rel_path
-        for _, stages in reassembler.SECTIONS
-        for rel_path, _ in stages
-    ]
+    return [run_dir / rel_path for _, stages in reassembler.SECTIONS for rel_path, _ in stages]
 
 
 def ensure_complete_report(run: site.Run) -> bool:
@@ -151,8 +149,7 @@ def ensure_complete_report(run: site.Run) -> bool:
             missing = expected_stage_paths(run)
         missing_text = "\n".join(f"  - {display_path(p)}" for p in missing)
         raise WorkflowError(
-            f"Cannot reassemble {display_path(path)}; missing stage files:\n"
-            f"{missing_text}"
+            f"Cannot reassemble {display_path(path)}; missing stage files:\n{missing_text}"
         )
 
     path.write_text(text, encoding="utf-8")
@@ -304,13 +301,22 @@ def validate_homepage(
                 and all(valid_value(part, bool) for part in suggestion)
                 and valid_value(cells[3], lambda v: site.parse_money(v) is not None)
                 and site.parse_money(cells[4]) is not None
-                and all(valid_value(cells[i], lambda v: re.fullmatch(r"[+-]?\d+(?:\.\d+)?%", v)
-                                    and math.isfinite(float(v[:-1]))) for i in (5, 6))
+                and all(
+                    valid_value(
+                        cells[i],
+                        lambda v: (
+                            re.fullmatch(r"[+-]?\d+(?:\.\d+)?%", v) and math.isfinite(float(v[:-1]))
+                        ),
+                    )
+                    for i in (5, 6)
+                )
                 and valid_value(cells[7], lambda v: v.lower() in {"low", "medium", "high"})
                 and valid_value(cells[8], bool)
             )
         if not complete:
-            raise WorkflowError(f"Homepage summary row contains n/a or missing/invalid fields: {row}")
+            raise WorkflowError(
+                f"Homepage summary row contains n/a or missing/invalid fields: {row}"
+            )
 
         match = SUMMARY_LINK_RE.search(row)
         if match is None:
@@ -322,9 +328,7 @@ def validate_homepage(
         if ticker not in selected_tickers:
             raise WorkflowError(f"Homepage summary has unexpected ticker: {ticker}")
         if not folder.startswith(f"{key}_"):
-            raise WorkflowError(
-                f"Homepage link for {ticker} must start with {key}_: {folder}"
-            )
+            raise WorkflowError(f"Homepage link for {ticker} must start with {key}_: {folder}")
         if folder not in selected_folders:
             raise WorkflowError(f"Homepage summary has unexpected report folder: {folder}")
 
@@ -349,7 +353,11 @@ def run_workflow(
     site_dir: Path | None = None,
 ) -> None:
     runs_by_ticker = discover_runs(DOCS)
-    target_date = normalize_analysis_date(analysis_date) if analysis_date else latest_analysis_date(runs_by_ticker)
+    target_date = (
+        normalize_analysis_date(analysis_date)
+        if analysis_date
+        else latest_analysis_date(runs_by_ticker)
+    )
     if target_date is None:
         raise WorkflowError("analysis date is required")
 

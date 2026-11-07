@@ -19,6 +19,7 @@ Idempotent and non-destructive: only writes ``complete_report.md`` for run
 folders that are missing it but have at least one stage file. Existing
 reports are never overwritten.
 """
+
 from __future__ import annotations
 
 import re
@@ -102,10 +103,7 @@ def reassemble(run_dir: Path, ticker: str) -> str | None:
     if not sections:
         return None
 
-    header = (
-        f"# Trading Analysis Report: {ticker}\n\n"
-        f"Generated: {generated_timestamp(run_dir)}\n\n"
-    )
+    header = f"# Trading Analysis Report: {ticker}\n\nGenerated: {generated_timestamp(run_dir)}\n\n"
     return transform(header + "\n\n".join(sections)) + "\n"
 
 

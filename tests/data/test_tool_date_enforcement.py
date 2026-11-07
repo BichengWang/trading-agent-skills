@@ -20,13 +20,16 @@ TRADE_DATE = "2026-08-14"
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("requested, expected", [
-    ("2026-09-14", TRADE_DATE),     # later than the run: clamped
-    ("2026-08-01", "2026-08-01"),   # earlier: narrows, allowed
-    (None, TRADE_DATE),             # omitted
-    ("Sept 1", TRADE_DATE),         # unparseable
-    ("", TRADE_DATE),
-])
+@pytest.mark.parametrize(
+    "requested, expected",
+    [
+        ("2026-09-14", TRADE_DATE),  # later than the run: clamped
+        ("2026-08-01", "2026-08-01"),  # earlier: narrows, allowed
+        (None, TRADE_DATE),  # omitted
+        ("Sept 1", TRADE_DATE),  # unparseable
+        ("", TRADE_DATE),
+    ],
+)
 def test_as_of_takes_the_earlier_date(requested, expected):
     assert as_of(requested, TRADE_DATE) == expected
 
@@ -37,11 +40,18 @@ def test_as_of_without_a_trade_date_passes_the_request_through():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("start, end, expected", [
-    ("2026-08-01", "2026-09-14", ("2026-08-01", TRADE_DATE)),  # end clamped
-    ("2026-08-01", "2026-08-10", ("2026-08-01", "2026-08-10")),  # inside: unchanged
-    ("2026-09-01", "2026-09-08", ("2026-08-07", TRADE_DATE)),  # wholly later: span kept, moved back
-])
+@pytest.mark.parametrize(
+    "start, end, expected",
+    [
+        ("2026-08-01", "2026-09-14", ("2026-08-01", TRADE_DATE)),  # end clamped
+        ("2026-08-01", "2026-08-10", ("2026-08-01", "2026-08-10")),  # inside: unchanged
+        (
+            "2026-09-01",
+            "2026-09-08",
+            ("2026-08-07", TRADE_DATE),
+        ),  # wholly later: span kept, moved back
+    ],
+)
 def test_as_of_window(start, end, expected):
     assert as_of_window(start, end, TRADE_DATE) == expected
 
@@ -49,9 +59,17 @@ def test_as_of_window(start, end, expected):
 @pytest.mark.unit
 def test_there_are_twelve_tools_with_verbatim_descriptions():
     assert list(tools.TOOLS) == [
-        "get_stock_data", "get_indicators", "get_verified_market_snapshot", "get_fundamentals",
-        "get_balance_sheet", "get_cashflow", "get_income_statement", "get_news",
-        "get_global_news", "get_insider_transactions", "get_macro_indicators",
+        "get_stock_data",
+        "get_indicators",
+        "get_verified_market_snapshot",
+        "get_fundamentals",
+        "get_balance_sheet",
+        "get_cashflow",
+        "get_income_statement",
+        "get_news",
+        "get_global_news",
+        "get_insider_transactions",
+        "get_macro_indicators",
         "get_prediction_markets",
     ]
     for name, spec in tools.TOOLS.items():
@@ -83,8 +101,12 @@ def test_a_tool_serves_the_run_instrument_whatever_the_model_passes():
         tools.call_tool("get_indicators", "NVDA", TRADE_DATE, indicator="rsi", curr_date=TRADE_DATE)
         with pytest.raises(ValueError, match="symbol"):
             tools.call_tool(
-                "get_indicators", "NVDA", TRADE_DATE,
-                symbol="RSI", indicator="rsi", curr_date=TRADE_DATE,
+                "get_indicators",
+                "NVDA",
+                TRADE_DATE,
+                symbol="RSI",
+                indicator="rsi",
+                curr_date=TRADE_DATE,
             )
     assert routed.call_args.args[1] == "NVDA"
     assert routed.call_count == 1
@@ -99,12 +121,18 @@ def _routed(name, ticker="NVDA", trade_date=TRADE_DATE, **kwargs):
 
 @pytest.mark.unit
 def test_statement_tool_with_omitted_date_uses_the_run_date():
-    assert _routed("get_balance_sheet")[-1] == TRADE_DATE  # #1331: an omitted date no longer means unfiltered
+    assert (
+        _routed("get_balance_sheet")[-1] == TRADE_DATE
+    )  # #1331: an omitted date no longer means unfiltered
 
 
 @pytest.mark.unit
 def test_future_curr_date_from_the_model_is_clamped():
-    assert _routed("get_fundamentals", curr_date="2026-09-14") == ("get_fundamentals", "NVDA", TRADE_DATE)
+    assert _routed("get_fundamentals", curr_date="2026-09-14") == (
+        "get_fundamentals",
+        "NVDA",
+        TRADE_DATE,
+    )
 
 
 @pytest.mark.unit
@@ -151,7 +179,9 @@ def test_a_window_whose_start_is_not_a_date_is_refused():
 
 @pytest.mark.unit
 def test_comma_separated_indicators_are_split_and_joined():
-    with mock.patch.object(tools, "route_to_vendor", side_effect=["RSI TEXT", "MFI TEXT"]) as routed:
+    with mock.patch.object(
+        tools, "route_to_vendor", side_effect=["RSI TEXT", "MFI TEXT"]
+    ) as routed:
         out = tools.call_tool(
             "get_indicators", "NVDA", TRADE_DATE, indicator=" RSI, mfi ,", curr_date=TRADE_DATE
         )
@@ -161,8 +191,12 @@ def test_comma_separated_indicators_are_split_and_joined():
 
 @pytest.mark.unit
 def test_an_unsupported_indicator_is_reported_not_raised():
-    with mock.patch.object(tools, "route_to_vendor", side_effect=ValueError("Indicator foo is not supported")):
-        out = tools.call_tool("get_indicators", "NVDA", TRADE_DATE, indicator="foo", curr_date=TRADE_DATE)
+    with mock.patch.object(
+        tools, "route_to_vendor", side_effect=ValueError("Indicator foo is not supported")
+    ):
+        out = tools.call_tool(
+            "get_indicators", "NVDA", TRADE_DATE, indicator="foo", curr_date=TRADE_DATE
+        )
     assert out == "Indicator foo is not supported"
 
 
@@ -196,8 +230,11 @@ def test_the_snapshot_appends_its_no_prices_sentence_to_both_sentinels():
 def test_the_snapshot_is_built_as_of_the_clamped_date():
     with mock.patch.object(tools, "build_verified_market_snapshot", return_value="ok") as built:
         tools.call_tool(
-            "get_verified_market_snapshot", "NVDA", TRADE_DATE,
-            curr_date="2026-09-14", look_back_days=10,
+            "get_verified_market_snapshot",
+            "NVDA",
+            TRADE_DATE,
+            curr_date="2026-09-14",
+            look_back_days=10,
         )
     assert built.call_args.args == ("NVDA", TRADE_DATE, 10)
 
@@ -217,8 +254,12 @@ def test_caller_mistakes_raise():
         tools.call_tool("get_indicators", "NVDA", TRADE_DATE, curr_date=TRADE_DATE)
     with pytest.raises(ValueError, match="look_back_days must be int"):
         tools.call_tool(
-            "get_indicators", "NVDA", TRADE_DATE,
-            indicator="rsi", curr_date=TRADE_DATE, look_back_days="lots",
+            "get_indicators",
+            "NVDA",
+            TRADE_DATE,
+            indicator="rsi",
+            curr_date=TRADE_DATE,
+            look_back_days="lots",
         )
 
 

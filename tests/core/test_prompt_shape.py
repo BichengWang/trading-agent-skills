@@ -12,16 +12,25 @@ from ta_skills import prompts, run
 from ta_skills.context import NO_EXTERNAL_TOOLS, WRAP_UP, opponent_argument_or_opening
 
 REPORT_TOKENS = (
-    "INSTRUMENT-CONTEXT", "MARKET-REPORT", "SENTIMENT-REPORT", "NEWS-REPORT", "FUNDAMENTALS-REPORT",
+    "INSTRUMENT-CONTEXT",
+    "MARKET-REPORT",
+    "SENTIMENT-REPORT",
+    "NEWS-REPORT",
+    "FUNDAMENTALS-REPORT",
 )
 RISK = [("aggressive", "Aggressive"), ("conservative", "Conservative"), ("neutral", "Neutral")]
 
 
 def make_state(history="", current_response="", count=0, risk_history="", risk_count=0, **risk):
     risk_state = {
-        "history": risk_history, "aggressive_history": "", "conservative_history": "",
-        "neutral_history": "", "latest_speaker": "", "count": risk_count,
-        "current_aggressive_response": "", "current_conservative_response": "",
+        "history": risk_history,
+        "aggressive_history": "",
+        "conservative_history": "",
+        "neutral_history": "",
+        "latest_speaker": "",
+        "count": risk_count,
+        "current_aggressive_response": "",
+        "current_conservative_response": "",
         "current_neutral_response": "",
     }
     risk_state.update(risk)
@@ -39,8 +48,11 @@ def make_state(history="", current_response="", count=0, risk_history="", risk_c
         "portfolio_context": "",
         "past_context": "",
         "investment_debate_state": {
-            "history": history, "bull_history": "", "bear_history": "",
-            "current_response": current_response, "count": count,
+            "history": history,
+            "bull_history": "",
+            "bear_history": "",
+            "current_response": current_response,
+            "count": count,
         },
         "risk_debate_state": risk_state,
         "run": {"output_language": "English", "max_tool_rounds": 20, "tool_calls": {}},
@@ -70,7 +82,9 @@ def test_reports_in_system_history_in_human(role):
 @pytest.mark.parametrize("role", ["bull", "bear"])
 def test_research_system_is_byte_identical_across_rounds(role):
     first, _ = parts(role, make_state())
-    second, _ = parts(role, make_state(history="\nBull: a\nBear: b", current_response="Bear: b", count=2))
+    second, _ = parts(
+        role, make_state(history="\nBull: a\nBear: b", current_response="Bear: b", count=2)
+    )
     assert first == second
 
 
@@ -90,7 +104,9 @@ def test_researcher_opening_has_no_phantom_opponent(role, opponent):
 
 @pytest.mark.unit
 def test_researcher_passes_real_opponent_argument():
-    system, human = parts("bull", make_state(current_response="Bear Analyst: valuation is stretched"))
+    system, human = parts(
+        "bull", make_state(current_response="Bear Analyst: valuation is stretched")
+    )
     assert "valuation is stretched" in human
     assert "has not spoken yet" not in system + human
 
@@ -114,8 +130,11 @@ def test_risk_system_is_byte_identical_across_rounds(role, _):
     first, _h = parts(role, make_state())
     second, _h = parts(
         role,
-        make_state(risk_history="\nAggressive Analyst: x", risk_count=1,
-                   current_aggressive_response="Aggressive Analyst: x"),
+        make_state(
+            risk_history="\nAggressive Analyst: x",
+            risk_count=1,
+            current_aggressive_response="Aggressive Analyst: x",
+        ),
     )
     assert first == second
 
@@ -154,8 +173,12 @@ def test_a_report_that_was_never_produced_says_so(role):
     """`--analysts market` leaves three reports empty; presenting them as blank
     sections invites the model to invent the contents."""
     state = make_state()
-    state.update(market_report="RSI 61, price 178.", sentiment_report="", news_report="",
-                 fundamentals_report="")
+    state.update(
+        market_report="RSI 61, price 178.",
+        sentiment_report="",
+        news_report="",
+        fundamentals_report="",
+    )
     system, human = parts(role, state)
     text = system + human
     assert text.count("it is not available, not an empty finding") == 3
@@ -171,11 +194,19 @@ ANALYSTS = ["market", "sentiment", "news", "fundamentals"]
 def analyst_prompt(role, tmp_path):
     import json
 
-    (tmp_path / "sentiment_inputs.json").write_text(json.dumps({
-        "start_date": "2026-08-07", "end_date": "2026-08-14", "news_block": "n",
-        "stocktwits_block": "st", "reddit_block": "rd", "subreddits": ["wallstreetbets"],
-        "character": "c",
-    }))
+    (tmp_path / "sentiment_inputs.json").write_text(
+        json.dumps(
+            {
+                "start_date": "2026-08-07",
+                "end_date": "2026-08-14",
+                "news_block": "n",
+                "stocktwits_block": "st",
+                "reddit_block": "rd",
+                "subreddits": ["wallstreetbets"],
+                "character": "c",
+            }
+        )
+    )
     system, human = prompts.render_skill(
         run.ROLE_SKILL[role], run.prompt_values(role, make_state(), tmp_path)
     )
@@ -242,10 +273,19 @@ def test_the_tool_budget_is_per_role():
 def test_the_sentiment_prompt_names_the_subreddits_searched(tmp_path):
     import json
 
-    (tmp_path / "sentiment_inputs.json").write_text(json.dumps({
-        "start_date": "a", "end_date": "b", "news_block": "n", "stocktwits_block": "s",
-        "reddit_block": "r", "subreddits": ["Bitcoin", "CryptoCurrency", "CryptoMarkets"], "character": "c",
-    }))
+    (tmp_path / "sentiment_inputs.json").write_text(
+        json.dumps(
+            {
+                "start_date": "a",
+                "end_date": "b",
+                "news_block": "n",
+                "stocktwits_block": "s",
+                "reddit_block": "r",
+                "subreddits": ["Bitcoin", "CryptoCurrency", "CryptoMarkets"],
+                "character": "c",
+            }
+        )
+    )
     system, _ = prompts.render_skill(
         "sentiment-analyst", run.prompt_values("sentiment", make_state(), tmp_path)
     )
@@ -274,9 +314,14 @@ def test_portfolio_manager_prompt_names_every_decision_field():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("role, must_name", [
-    ("portfolio_manager", "Rating"), ("research_manager", "Recommendation"), ("trader", "Action"),
-])
+@pytest.mark.parametrize(
+    "role, must_name",
+    [
+        ("portfolio_manager", "Rating"),
+        ("research_manager", "Recommendation"),
+        ("trader", "Action"),
+    ],
+)
 def test_a_decision_prompt_states_the_shape_of_its_answer(role, must_name):
     system, human = parts(role, make_state())
     text = system + (human or "")
@@ -324,12 +369,30 @@ def test_the_language_instruction_reaches_every_reporting_role(tmp_path):
     state["run"]["output_language"] = "Deutsch"
     import json
 
-    (tmp_path / "sentiment_inputs.json").write_text(json.dumps({
-        "start_date": "a", "end_date": "b", "news_block": "n", "stocktwits_block": "s",
-        "reddit_block": "r", "subreddits": ["stocks"], "character": "c",
-    }))
-    for role in (*ANALYSTS, "bull", "bear", "research_manager", "trader", "aggressive",
-                 "conservative", "neutral", "portfolio_manager"):
+    (tmp_path / "sentiment_inputs.json").write_text(
+        json.dumps(
+            {
+                "start_date": "a",
+                "end_date": "b",
+                "news_block": "n",
+                "stocktwits_block": "s",
+                "reddit_block": "r",
+                "subreddits": ["stocks"],
+                "character": "c",
+            }
+        )
+    )
+    for role in (
+        *ANALYSTS,
+        "bull",
+        "bear",
+        "research_manager",
+        "trader",
+        "aggressive",
+        "conservative",
+        "neutral",
+        "portfolio_manager",
+    ):
         system, human = prompts.render_skill(
             run.ROLE_SKILL[role], run.prompt_values(role, state, tmp_path)
         )

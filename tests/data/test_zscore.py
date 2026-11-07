@@ -129,9 +129,7 @@ class TestYFinanceWindowWiring:
         frame = _ohlcv([100 + i for i in range(320)])
         monkeypatch.setattr(y_finance, "load_ohlcv", lambda symbol, curr_date: frame)
 
-        out = y_finance.get_stock_stats_indicators_window(
-            "AAPL", "z_score", "2026-06-04", 30
-        )
+        out = y_finance.get_stock_stats_indicators_window("AAPL", "z_score", "2026-06-04", 30)
         for token in ("Tier 1", "Tier 2", "Tier 3", "Weekly", "Monthly", "Daily"):
             assert token in out
 
@@ -172,9 +170,7 @@ class TestAlphaVantageFallback:
             cfg.setdefault("tool_vendors", {})["get_indicators"] = "alpha_vantage,yfinance"
             set_config(cfg)
 
-            out = interface.route_to_vendor(
-                "get_indicators", "AAPL", "z_score", "2026-06-04", 30
-            )
+            out = interface.route_to_vendor("get_indicators", "AAPL", "z_score", "2026-06-04", 30)
             assert "Tier 1 Weekly" in out
         finally:
             set_config(saved)

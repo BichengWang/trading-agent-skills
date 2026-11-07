@@ -10,37 +10,55 @@ from ta_skills import run
 TRADE_DATE = "2025-03-14"
 
 IDENTITY = {
-    "company_name": "NVIDIA Corporation", "sector": "Technology", "industry": "Semiconductors",
+    "company_name": "NVIDIA Corporation",
+    "sector": "Technology",
+    "industry": "Semiconductors",
     "exchange": "NMS",
 }
 SENTIMENT_INPUTS = {
-    "start_date": "2025-03-07", "end_date": TRADE_DATE, "news_block": "NEWS-BLOCK",
-    "stocktwits_block": "ST-BLOCK", "reddit_block": "REDDIT-BLOCK",
+    "start_date": "2025-03-07",
+    "end_date": TRADE_DATE,
+    "news_block": "NEWS-BLOCK",
+    "stocktwits_block": "ST-BLOCK",
+    "reddit_block": "REDDIT-BLOCK",
     "subreddits": ["wallstreetbets", "stocks", "investing"],
     "character": "r/wallstreetbets is often contrarian/exuberant; r/stocks more measured; "
-                 "r/investing longer-term",
+    "r/investing longer-term",
 }
 
 SENTIMENT = {
-    "overall_band": "Bullish", "overall_score": 7.2, "confidence": "medium",
+    "overall_band": "Bullish",
+    "overall_score": 7.2,
+    "confidence": "medium",
     "narrative": "StockTwits leans bullish.\n\n| Source | Direction |\n|---|---|\n| news | up |",
 }
 RESEARCH_PLAN = {
-    "recommendation": "Buy", "rationale": "The bull case carried the debate.",
+    "recommendation": "Buy",
+    "rationale": "The bull case carried the debate.",
     "strategic_actions": "Build the position in two tranches.",
 }
 TRADER = {
-    "action": "Buy", "reasoning": "Plan and price structure agree.", "entry_price": 100.5,
-    "stop_loss": 95.0, "position_sizing": "5% of portfolio",
+    "action": "Buy",
+    "reasoning": "Plan and price structure agree.",
+    "entry_price": 100.5,
+    "stop_loss": 95.0,
+    "position_sizing": "5% of portfolio",
 }
 PM = {
-    "rating": "Overweight", "executive_summary": "Add gradually.",
+    "rating": "Overweight",
+    "executive_summary": "Add gradually.",
     "investment_thesis": "Street consensus rating: Hold. Our target: 12x forward FCF.",
-    "price_target": 120.0, "current_price": 101.0, "confidence": "medium", "time_horizon": "3-6 months",
+    "price_target": 120.0,
+    "current_price": 101.0,
+    "confidence": "medium",
+    "time_horizon": "3-6 months",
 }
 
 STRUCTURED_JSON = {
-    "sentiment": SENTIMENT, "research_manager": RESEARCH_PLAN, "trader": TRADER, "portfolio_manager": PM,
+    "sentiment": SENTIMENT,
+    "research_manager": RESEARCH_PLAN,
+    "trader": TRADER,
+    "portfolio_manager": PM,
 }
 FREE_TEXT = {
     "market": "**Current Price**: 101.0\n\n# Market view\n\nTrend is up.",

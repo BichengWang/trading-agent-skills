@@ -32,8 +32,15 @@ def test_no_env_uses_built_in_defaults(monkeypatch):
 
 def test_the_llm_provider_keys_are_not_carried():
     config = default_config_module.build_default_config()
-    for key in ("llm_provider", "deep_think_llm", "quick_think_llm", "backend_url",
-                "checkpoint_enabled", "temperature", "max_recur_limit"):
+    for key in (
+        "llm_provider",
+        "deep_think_llm",
+        "quick_think_llm",
+        "backend_url",
+        "checkpoint_enabled",
+        "temperature",
+        "max_recur_limit",
+    ):
         assert key not in config
 
 
@@ -64,8 +71,16 @@ def test_int_coercion(monkeypatch):
 @pytest.mark.parametrize(
     "raw,expected",
     [
-        ("true", True), ("True", True), ("1", True), ("yes", True), ("on", True),
-        ("false", False), ("False", False), ("0", False), ("no", False), ("off", False),
+        ("true", True),
+        ("True", True),
+        ("1", True),
+        ("yes", True),
+        ("on", True),
+        ("false", False),
+        ("False", False),
+        ("0", False),
+        ("no", False),
+        ("off", False),
     ],
 )
 def test_bool_coercion(monkeypatch, raw, expected):

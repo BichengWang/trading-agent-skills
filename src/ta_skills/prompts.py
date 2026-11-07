@@ -97,7 +97,10 @@ def join_parts(system: str, human: str | None) -> str:
 
 def _resolve(prop: dict, defs: dict) -> dict:
     if "$ref" in prop:
-        return {**defs[prop["$ref"].rsplit("/", 1)[-1]], **{k: v for k, v in prop.items() if k != "$ref"}}
+        return {
+            **defs[prop["$ref"].rsplit("/", 1)[-1]],
+            **{k: v for k, v in prop.items() if k != "$ref"},
+        }
     return prop
 
 
@@ -117,9 +120,12 @@ def _type_label(prop: dict, defs: dict) -> tuple[str, bool]:
     if "enum" in prop:
         return "one of " + " | ".join(f'"{v}"' for v in prop["enum"]), nullable
     kind = prop.get("type", "any")
-    label = {"number": "number", "integer": "integer", "string": "string", "boolean": "boolean"}.get(
-        kind, str(kind)
-    )
+    label = {
+        "number": "number",
+        "integer": "integer",
+        "string": "string",
+        "boolean": "boolean",
+    }.get(kind, str(kind))
     bounds = []
     if "minimum" in prop:
         bounds.append(f">= {prop['minimum']:g}")

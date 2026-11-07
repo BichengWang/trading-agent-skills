@@ -84,11 +84,14 @@ def _cmd_eval_pull(args) -> None:
     config = get_config()
     repo = args.repo or config.get("eval_site_repo")
     if not repo:
-        raise run.RunError("ta eval pull needs --repo (or TRADINGAGENTS_SITE_REPO): a TradingAgents "
-                           "checkout whose remote has the published site branch")
+        raise run.RunError(
+            "ta eval pull needs --repo (or TRADINGAGENTS_SITE_REPO): a TradingAgents "
+            "checkout whose remote has the published site branch"
+        )
     ledger = Path(config["eval_dir"]).expanduser() / "forecasts.jsonl"
-    _print_json(pull(ledger, Path(repo), remote=args.remote, branch=args.branch,
-                     fetch=not args.no_fetch))
+    _print_json(
+        pull(ledger, Path(repo), remote=args.remote, branch=args.branch, fetch=not args.no_fetch)
+    )
 
 
 def _cmd_eval_report(args) -> None:
@@ -110,14 +113,21 @@ def _cmd_eval_report(args) -> None:
     as_of = args.as_of or (date.today() - timedelta(days=1)).isoformat()
     outcomes, failed = score_ledger(forecasts, config, as_of)
     outcomes.to_csv(out / "outcomes.csv", index=False)
-    card = build_scorecard(outcomes, as_of, {"ledger": str(ledger),
-                                             "commit": forecasts[-1]["source_commit"]})
+    card = build_scorecard(
+        outcomes, as_of, {"ledger": str(ledger), "commit": forecasts[-1]["source_commit"]}
+    )
     card["coverage"]["price_failures"] = failed
     (out / "scorecard.json").write_text(json.dumps(card, indent=2, default=str), encoding="utf-8")
     (out / "scorecard.md").write_text(render_markdown(card), encoding="utf-8")
-    _print_json({"as_of": as_of, "decisions": card["coverage"]["decisions"],
-                 "price_failures": failed, "scorecard": str(out / "scorecard.md"),
-                 "outcomes": str(out / "outcomes.csv")})
+    _print_json(
+        {
+            "as_of": as_of,
+            "decisions": card["coverage"]["decisions"],
+            "price_failures": failed,
+            "scorecard": str(out / "scorecard.md"),
+            "outcomes": str(out / "outcomes.csv"),
+        }
+    )
 
 
 # --- ta tool ----------------------------------------------------------------------------------
@@ -161,7 +171,9 @@ def _tool_params(spec, extras: list[str]) -> dict[str, str]:
     while i < len(extras):
         arg = extras[i]
         if not arg.startswith("--"):
-            raise run.RunError(f"unexpected argument {arg!r}; tool parameters are --name value pairs")
+            raise run.RunError(
+                f"unexpected argument {arg!r}; tool parameters are --name value pairs"
+            )
         name, eq, value = arg[2:].partition("=")
         if not eq:
             i += 1
@@ -191,7 +203,9 @@ def _cmd_tool(args, extras: list[str]) -> None:
     spec = TOOLS.get(args.name)
     if spec is None:
         raise run.RunError(f"unknown tool {args.name!r}; see `ta tool list`")
-    sys.stdout.write(run.run_tool(args.run, args.name, args.role, _tool_params(spec, extras)) + "\n")
+    sys.stdout.write(
+        run.run_tool(args.run, args.name, args.role, _tool_params(spec, extras)) + "\n"
+    )
 
 
 # --- parser -----------------------------------------------------------------------------------
@@ -214,13 +228,26 @@ def build_parser() -> argparse.ArgumentParser:
     p = run_sub.add_parser("init", help="create a run directory; prints its path")
     p.add_argument("--ticker", required=True)
     p.add_argument("--date", required=True, help="analysis date, YYYY-MM-DD, not in the future")
-    p.add_argument("--analysts", default="market,sentiment,news,fundamentals",
-                   help="comma-separated: market,sentiment,news,fundamentals (social = sentiment)")
-    p.add_argument("--depth", type=int, help="rounds for both debates; an exported "
-                   f"{run.DEBATE_ROUNDS_ENV} / {run.RISK_ROUNDS_ENV} wins over it")
-    p.add_argument("--debate-rounds", type=int, help="bull/bear rounds (explicit; beats the environment)")
-    p.add_argument("--risk-rounds", type=int, help="risk-analyst rounds (explicit; beats the environment)")
-    p.add_argument("--language", help="output language (default: config / TRADINGAGENTS_OUTPUT_LANGUAGE)")
+    p.add_argument(
+        "--analysts",
+        default="market,sentiment,news,fundamentals",
+        help="comma-separated: market,sentiment,news,fundamentals (social = sentiment)",
+    )
+    p.add_argument(
+        "--depth",
+        type=int,
+        help="rounds for both debates; an exported "
+        f"{run.DEBATE_ROUNDS_ENV} / {run.RISK_ROUNDS_ENV} wins over it",
+    )
+    p.add_argument(
+        "--debate-rounds", type=int, help="bull/bear rounds (explicit; beats the environment)"
+    )
+    p.add_argument(
+        "--risk-rounds", type=int, help="risk-analyst rounds (explicit; beats the environment)"
+    )
+    p.add_argument(
+        "--language", help="output language (default: config / TRADINGAGENTS_OUTPUT_LANGUAGE)"
+    )
     p.add_argument("--portfolio", metavar="FILE", help="portfolio JSON: cash, currency, positions")
     p.add_argument("--asset-type", choices=("auto", "stock", "crypto"), default="auto")
     p.add_argument("--model-label", help="label for the report folder (default: the deep model)")
@@ -241,8 +268,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = run_sub.add_parser("submit", help="validate and apply a role's output")
     p.add_argument("role", choices=run.ROLES)
     p.add_argument("--run", required=True, metavar="DIR")
-    p.add_argument("--file", metavar="PATH", help="markdown (free-text roles) or JSON (structured "
-                   "roles); omitted for the memory role")
+    p.add_argument(
+        "--file",
+        metavar="PATH",
+        help="markdown (free-text roles) or JSON (structured roles); omitted for the memory role",
+    )
     p.set_defaults(func=_cmd_submit)
 
     p = run_sub.add_parser("finish", help="write the report tree and record the decision")
@@ -253,7 +283,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ta tool ...
     p = top.add_parser(
-        "tool", help="run an analyst's data tool (`ta tool list` shows them)",
+        "tool",
+        help="run an analyst's data tool (`ta tool list` shows them)",
         description="ta tool NAME --run DIR --role ROLE [--<param> value ...]   run a tool\n"
         "ta tool list [--role ROLE]                                 list tools",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -266,7 +297,9 @@ def build_parser() -> argparse.ArgumentParser:
     # ta memory ...
     mem = top.add_parser("memory", help="settle and reflect on past decisions")
     mem_sub = mem.add_subparsers(dest="command", required=True)
-    p = mem_sub.add_parser("due", help="price outcomes of settled decisions, with reflection prompts")
+    p = mem_sub.add_parser(
+        "due", help="price outcomes of settled decisions, with reflection prompts"
+    )
     p.add_argument("--run", required=True, metavar="DIR")
     p.set_defaults(func=_cmd_memory_due)
     p = mem_sub.add_parser("resolve", help="write a reflection into the memory log")
@@ -280,14 +313,17 @@ def build_parser() -> argparse.ArgumentParser:
     ev = top.add_parser("eval", help="score published forecasts against realized prices")
     ev_sub = ev.add_subparsers(dest="command", required=True)
     p = ev_sub.add_parser("pull", help="append newly published decisions to the forecast ledger")
-    p.add_argument("--repo", metavar="DIR", help="TradingAgents checkout (default: "
-                   "TRADINGAGENTS_SITE_REPO)")
+    p.add_argument(
+        "--repo", metavar="DIR", help="TradingAgents checkout (default: TRADINGAGENTS_SITE_REPO)"
+    )
     p.add_argument("--remote", default="origin")
     p.add_argument("--branch", default="gh-pages", help="published site branch")
     p.add_argument("--no-fetch", action="store_true", help="read the ref as already fetched")
     p.set_defaults(func=_cmd_eval_pull)
     p = ev_sub.add_parser("report", help="price the ledger's forecasts and write the scorecard")
-    p.add_argument("--as-of", metavar="YYYY-MM-DD", help="last price bar to use (default: yesterday)")
+    p.add_argument(
+        "--as-of", metavar="YYYY-MM-DD", help="last price bar to use (default: yesterday)"
+    )
     p.set_defaults(func=_cmd_eval_report)
     return parser
 

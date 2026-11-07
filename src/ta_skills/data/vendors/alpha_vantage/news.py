@@ -1,4 +1,3 @@
-
 from ta_skills.config import get_config
 from ta_skills.data.date_window import withhold_undisclosed_trades
 from ta_skills.data.vendors.alpha_vantage.common import (
@@ -33,7 +32,9 @@ def get_news(ticker, start_date, end_date) -> dict[str, str] | str:
     return _make_api_request("NEWS_SENTIMENT", params)
 
 
-def get_global_news(as_of_date, look_back_days: int | None = None, limit: int | None = None) -> dict[str, str] | str:
+def get_global_news(
+    as_of_date, look_back_days: int | None = None, limit: int | None = None
+) -> dict[str, str] | str:
     """Returns global market news & sentiment data without ticker-specific filtering.
 
     Covers broad market topics like financial markets, economy, and more.

@@ -29,8 +29,11 @@ RATING_SCORE = {r: 2 - i for i, r in enumerate(RATINGS_5_TIER)}
 
 _FIELD_RE = re.compile(r"<p>\s*<strong>([^<]+?)</strong>(.*?)</p>", re.DOTALL)
 _LABELS = {
-    "Rating": "rating", "Current Price": "current_price", "Price Target": "price_target",
-    "Confidence": "confidence", "Time Horizon": "time_horizon",
+    "Rating": "rating",
+    "Current Price": "current_price",
+    "Price Target": "price_target",
+    "Confidence": "confidence",
+    "Time Horizon": "time_horizon",
 }
 _RATING_RE = re.compile(r"\W*(buy|overweight|hold|underweight|sell)\b", re.IGNORECASE)
 _NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
@@ -48,17 +51,17 @@ class Forecast:
 
     path: str
     ticker: str
-    date: str               # analysis date, YYYY-MM-DD
+    date: str  # analysis date, YYYY-MM-DD
     model: str
-    generated_at: str       # run start, YYYY-MM-DDTHH:MM:SS, the runner's local clock
-    rating: str | None      # one of RATINGS_5_TIER, or None when the report states none
+    generated_at: str  # run start, YYYY-MM-DDTHH:MM:SS, the runner's local clock
+    rating: str | None  # one of RATINGS_5_TIER, or None when the report states none
     reported_price: float | None
     price_target: float | None
     confidence: str | None
     time_horizon: str | None
     horizon_min_td: int | None
     horizon_max_td: int | None
-    section_sha256: str     # of the final decision section as published
+    section_sha256: str  # of the final decision section as published
     source_commit: str
 
 
@@ -119,9 +122,14 @@ def forecast_from_page(path: str, page: str, source_commit: str) -> Forecast | N
     horizon = parse_horizon(fields["time_horizon"])
     confidence = (fields["confidence"] or "").split(" ")[0].strip(".,;").lower()
     return Forecast(
-        path=path, ticker=ticker, date=f"{day[:4]}-{day[4:6]}-{day[6:]}", model=model,
-        generated_at=(f"{gen_day[:4]}-{gen_day[4:6]}-{gen_day[6:]}T"
-                      f"{gen_time[:2]}:{gen_time[2:4]}:{gen_time[4:]}"),
+        path=path,
+        ticker=ticker,
+        date=f"{day[:4]}-{day[4:6]}-{day[6:]}",
+        model=model,
+        generated_at=(
+            f"{gen_day[:4]}-{gen_day[4:6]}-{gen_day[6:]}T"
+            f"{gen_time[:2]}:{gen_time[2:4]}:{gen_time[4:]}"
+        ),
         rating=parse_rating(fields["rating"]),
         reported_price=parse_price(fields["current_price"]),
         price_target=parse_price(fields["price_target"]),
@@ -141,8 +149,9 @@ def load_ledger(path: Path) -> list[dict]:
 
 
 def _git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
-    return subprocess.run(["git", "-C", str(repo), *args], input=stdin, capture_output=True,
-                          check=True).stdout
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], input=stdin, capture_output=True, check=True
+    ).stdout
 
 
 def _read_blobs(repo: Path, ref: str, paths: list[str], chunk: int = 100):
@@ -151,19 +160,31 @@ def _read_blobs(repo: Path, ref: str, paths: list[str], chunk: int = 100):
     Chunked so a full history (2,000+ pages of ~350 KB) never sits in memory at once.
     """
     for start in range(0, len(paths), chunk):
-        batch = paths[start:start + chunk]
-        out = _git(repo, "cat-file", "--batch",
-                   stdin="".join(f"{ref}:{p}\n" for p in batch).encode("utf-8"))
+        batch = paths[start : start + chunk]
+        out = _git(
+            repo,
+            "cat-file",
+            "--batch",
+            stdin="".join(f"{ref}:{p}\n" for p in batch).encode("utf-8"),
+        )
         pos = 0
         for path in batch:
             header_end = out.index(b"\n", pos)
             size = int(out[pos:header_end].split()[2])
-            yield path, out[header_end + 1:header_end + 1 + size].decode("utf-8", errors="replace")
+            yield (
+                path,
+                out[header_end + 1 : header_end + 1 + size].decode("utf-8", errors="replace"),
+            )
             pos = header_end + 1 + size + 1
 
 
-def pull(ledger_path: Path, repo: Path, remote: str = "origin", branch: str = "gh-pages",
-         fetch: bool = True) -> dict:
+def pull(
+    ledger_path: Path,
+    repo: Path,
+    remote: str = "origin",
+    branch: str = "gh-pages",
+    fetch: bool = True,
+) -> dict:
     """Append every published run not yet in the ledger, read from ``remote/branch`` of ``repo``.
 
     Only the remote-tracking ref is updated: the checkout's working tree and
@@ -174,8 +195,11 @@ def pull(ledger_path: Path, repo: Path, remote: str = "origin", branch: str = "g
     if fetch:
         _git(repo, "fetch", "-q", remote, branch)
     commit = _git(repo, "rev-parse", ref).decode().strip()
-    listed = [p for p in _git(repo, "ls-tree", "-r", "--name-only", ref).decode().splitlines()
-              if REPORT_PATH.match(p)]
+    listed = [
+        p
+        for p in _git(repo, "ls-tree", "-r", "--name-only", ref).decode().splitlines()
+        if REPORT_PATH.match(p)
+    ]
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     with locked(ledger_path):
         known = {row["path"] for row in load_ledger(ledger_path)}
@@ -185,8 +209,11 @@ def pull(ledger_path: Path, repo: Path, remote: str = "origin", branch: str = "g
             for forecast in forecasts:
                 fh.write(json.dumps(asdict(forecast), ensure_ascii=False) + "\n")
     return {
-        "source": f"{repo}@{ref}", "commit": commit, "published": len(listed),
-        "added": len(forecasts), "ledger_total": len(known) + len(forecasts),
+        "source": f"{repo}@{ref}",
+        "commit": commit,
+        "published": len(listed),
+        "added": len(forecasts),
+        "ledger_total": len(known) + len(forecasts),
         "added_without_rating": sum(f.rating is None for f in forecasts),
         "ledger": str(ledger_path),
     }
