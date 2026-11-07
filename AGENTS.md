@@ -15,7 +15,7 @@ trading-agent-skills: TradingAgents' research pipeline as Agent Skills plus a de
 
 - `docs/<TICKER>/<YYYYMMDD>_<MODEL>_<YYYYMMDD>_<HHMMSS>/` holds report runs in the TradingAgents layout (`1_analysts/` .. `5_portfolio/`, `complete_report.md`/`.html`); `ta run finish` writes them there via the `trading-research` skill.
 - Do not recursively scan or read report Markdown under `docs/**/*.md` into context. Treat `docs/index.md`, `docs/<TICKER>/index.md` and run folders as generated output; never hand-edit them.
-- Refresh the site with `uv run python scripts/report_workflow.py --analysis-date YYYYMMDD --allow-incomplete` (regenerates the homepage and ticker hubs, validates the summary rows, compiles `_site/` with `mkdocs build --strict`). Needs the `docs` extra: `uv pip install -e '.[dev,docs]'`.
+- Refresh the site with `uv run python scripts/report_workflow.py --analysis-date YYYYMMDD --allow-incomplete` (regenerates the homepage and ticker hubs, validates the summary rows, compiles `_site/` with `mkdocs build --strict`). Needs the `docs` extra: `uv sync --extra docs`.
 - Report Markdown, the derived indices and `_site/` are gitignored, as in TradingAgents: they stay in the local checkout. Verify docs with bounded commands (`grep -c`, the workflow validators), not by dumping reports.
 
 ## Before a PR

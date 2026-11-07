@@ -45,7 +45,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone <this repo> && cd trading-agent-skills
-uv sync --extra dev --extra docs   # or: uv pip install -e '.[dev,docs]'
+uv sync --extra docs   # dev tools (ruff, pytest) come with every uv sync / uv run
 uv run ta --help
 ```
 
